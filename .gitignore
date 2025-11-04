@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# OS / editors
+*.DS_Store
+.vscode/
+.idea/
+
+# Environments
+.venv/
+.uv/
+
+# Secrets
+.env
+.env.*
+
+# Build / cache
+dist/
+build/
+*.egg-info/
+
+# Project outputs
+artifacts/
+*.log
+*.lock

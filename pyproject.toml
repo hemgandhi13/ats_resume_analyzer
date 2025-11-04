@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling>=1.25.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ats-resume-analyzer"
+version = "0.2.0"
+description = "Beginner-friendly ATS resume analyzer: PDF->text, parse basics, TF-IDF scoring, LLM suggestions, CSV/JSON exports."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "streamlit>=1.37",
+  "typer>=0.12",
+  "pymupdf>=1.24",
+  "pandas>=2.2",
+  "scikit-learn>=1.4",
+  "rapidfuzz>=3.9",
+  "pydantic>=2.6",
+  "pydantic-settings>=2.3",
+  "python-dotenv>=1.0",
+  "litellm>=1.43",
+  "instructor>=1.5",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.2",
+  "ruff>=0.6",
+  "black>=24.8",
+  "pre-commit>=4.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["ats"]
+
+[tool.ruff]
+line-length = 100
