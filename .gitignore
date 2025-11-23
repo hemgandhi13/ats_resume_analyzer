@@ -2,26 +2,37 @@
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
+*.so
+*.egg-info/
+*.egg
 
-# OS / editors
-*.DS_Store
+# Virtual envs
+.venv/
+venv/
+env/
+
+# IDE / editor
 .vscode/
 .idea/
+*.code-workspace
 
-# Environments
-.venv/
-.uv/
-
-# Secrets
-.env
-.env.*
-
-# Build / cache
+# Build / logs / cache
 dist/
 build/
-*.egg-info/
-
-# Project outputs
-artifacts/
 *.log
-*.lock
+ats_app.log
+.streamlit/
+.pytest_cache/
+.cache/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Secrets / configs
+.env
+.env.*
+*.pem
+*.key
+*.crt

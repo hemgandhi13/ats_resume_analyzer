@@ -1,0 +1,283 @@
+python
+r
+java
+javascript
+typescript
+scala
+go
+c
+c++
+sql
+bash
+linux
+git
+github
+gitlab
+github actions
+gitlab ci
+docker
+kubernetes
+helm
+terraform
+ansible
+packer
+
+excel
+excel vba
+google sheets
+power bi
+dax
+power query
+tableau
+qlik
+looker
+metabase
+superset
+
+pandas
+numpy
+scipy
+statsmodels
+polars
+dask
+pyspark
+spark
+spark streaming
+delta lake
+deltalake
+databricks
+mlflow
+dbt
+airflow
+luigi
+prefect
+kafka
+ksql
+kinesis
+glue
+step functions
+athena
+redshift
+bigquery
+snowflake
+synapse
+databricks sql
+dataform
+dataflow
+pubsub
+event hubs
+azure data factory
+adf
+gcp dataproc
+gcp dataflow
+
+postgresql
+mysql
+sqlite
+mongodb
+cosmos db
+dynamodb
+cassandra
+neo4j
+elasticsearch
+redis
+clickhouse
+duckdb
+presto
+trino
+hive
+iceberg
+hudi
+
+fastapi
+flask
+django
+streamlit
+dash
+gradio
+graphql
+rest api
+api gateway
+postman
+openapi
+
+scikit-learn
+tensorflow
+pytorch
+keras
+xgboost
+lightgbm
+catboost
+prophet
+h2o
+opencv
+spacy
+nltk
+transformers
+sentence-transformers
+gensim
+
+feature engineering
+feature selection
+model training
+model evaluation
+cross validation
+hyperparameter optimization
+model interpretability
+shap
+lime
+partial dependence
+calibration
+model monitoring
+model registry
+model serving
+feature store
+retrieval augmented generation
+prompt engineering
+vector database
+faiss
+milvus
+weaviate
+pinecone
+
+time series forecasting
+anomaly detection
+outlier detection
+clustering
+classification
+regression
+recommendation systems
+collaborative filtering
+dimensionality reduction
+pca
+tsne
+umap
+bayesian optimization
+a/b testing
+causal inference
+uplift modeling
+
+data modeling
+dimensional modeling
+star schema
+snowflake schema
+data warehouse
+data lake
+lakehouse
+data governance
+data lineage
+data catalog
+data quality
+data profiling
+data reconciliation
+pii masking
+row level security
+column level security
+access control
+
+logging
+monitoring
+observability
+prometheus
+grafana
+opentelemetry
+elk
+cloudwatch
+stackdriver
+
+aws
+azure
+google cloud
+s3
+ec2
+lambda
+iam
+glue
+athena
+redshift
+emr
+cloudformation
+eks
+ecr
+sagemaker
+eventbridge
+azure devops
+synapse
+databricks
+event hubs
+cosmos db
+data lake storage
+purview
+functions
+service bus
+app service
+gke
+gcs
+bigquery
+dataflow
+dataproc
+pubsub
+vertex ai
+cloud run
+cloud functions
+
+security
+encryption at rest
+encryption in transit
+secrets management
+key rotation
+audit logging
+tokenization
+oauth
+oidc
+
+testing
+pytest
+unittest
+great expectations
+dbt tests
+data contracts
+
+performance tuning
+query optimization
+partitioning
+bucketing
+z-ordering
+materialized views
+caching
+
+documentation
+readme
+runbooks
+design docs
+adr
+confluence
+jira
+
+etl
+elt
+orchestration
+scheduling
+cdc
+change data capture
+idempotency
+error handling
+retry strategy
+backoff
+blue green deployment
+canary release
+
+geospatial analysis
+spatial joins
+postgis
+geopandas
+leaflet
+kepler.gl
+mapbox
+
+business intelligence
+self-service analytics
+kpi design
+metric layer
+semantic layer
+data products

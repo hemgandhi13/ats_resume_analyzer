@@ -1,0 +1,118 @@
+end-to-end etl
+data migration
+data mapping
+post-migration validation
+data reconciliation
+data quality rules
+data profiling
+data lineage
+data governance
+data catalog
+schema evolution
+slowly changing dimensions
+dimensional modeling
+star schema
+snowflake schema
+data warehouse
+data lake
+lakehouse
+delta lake
+stream processing
+batch processing
+near real-time processing
+event-driven pipelines
+change data capture
+cdc pipeline
+idempotent loads
+error handling strategy
+retriable jobs
+orchestration workflow
+scheduling dag
+parameterized pipelines
+infrastructure as code
+infrastructure-as-code
+continuous integration
+continuous delivery
+ml model registry
+model versioning
+model monitoring
+model serving
+feature store
+feature engineering
+feature selection
+feature importance
+hyperparameter optimization
+cross validation
+train test split
+time series forecasting
+anomaly detection
+outlier detection
+segmentation analysis
+customer churn prediction
+recommendation system
+natural language processing
+named entity recognition
+topic modeling
+word embeddings
+transformer models
+prompt engineering
+retrieval augmented generation
+vector database
+semantic search
+similarity search
+tf-idf vectorization
+cosine similarity
+tokenization strategy
+text normalization
+lemmatization pipeline
+entity resolution
+record linkage
+fuzzy matching
+address standardization
+geospatial analysis
+spatial joins
+raster processing
+tile server
+map projection
+geocoding pipeline
+interactive dashboards
+self-service analytics
+business intelligence
+kpi definitions
+metric layer
+semantic layer
+governed datasets
+production readiness
+observability stack
+data reliability
+data contracts
+data mesh
+domain ownership
+service level objective
+data service api
+rest api design
+graphql api
+rate limiting
+pagination strategy
+secure by design
+access control
+row level security
+column level security
+pii masking
+encryption at rest
+encryption in transit
+secrets management
+key rotation
+audit logging
+cost optimization
+performance tuning
+query optimization
+partition pruning
+z-ordering
+clustered tables
+materialized views
+replicated tables
+column stored tables
+row stored tables
+column stored views
+row stored views
