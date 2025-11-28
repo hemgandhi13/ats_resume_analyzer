@@ -1,0 +1,36 @@
+# --- Core app + UI ---
+streamlit>=1.37
+typer>=0.12
+
+# PDF, images, OCR
+pymupdf>=1.24           # provides 'fitz'
+Pillow>=10.0
+pytesseract>=0.3
+
+# Data / ML / scoring
+pandas>=2.2
+numpy>=1.26
+scikit-learn>=1.4
+rapidfuzz>=3.9
+
+# Config / settings / env
+pydantic>=2.6
+pydantic-settings>=2.3
+python-dotenv>=1.0
+pyyaml>=6.0.1
+
+# LLM layer
+litellm>=1.43
+instructor>=1.5
+
+# Docx parsing
+python-docx>=0.8.11
+
+# Optional caching backend 
+redis>=5.0
+
+# --- Semantic similarity (evidence ranking, semantic score) ---
+sentence-transformers>=2.6
+transformers>=4.44
+huggingface_hub>=0.24
+torch>=2.2,<3.0

@@ -62,6 +62,7 @@ USE_SEMANTIC_DEFAULT = os.getenv("USE_SEMANTIC", "1").lower() not in (
     "false",
     "no",
 )
+
 st.set_page_config(page_title="ATS Resume Analyzer", page_icon="🧭", layout="wide")
 
 st.title("🧭 ATS Resume Analyzer — v0.2")
@@ -92,9 +93,9 @@ with st.sidebar:
     )
 
     AVAILABLE_MODELS = ["anthropic/claude-3-5-haiku-20241022"]
-    default_model = os.getenv("LLM_MODEL", "anthropic/claude-3-haiku-20240307")
+    default_model = os.getenv("LLM_MODEL", "anthropic/claude-3-5-haiku-20241022")
     if default_model not in AVAILABLE_MODELS:
-        default_model = "anthropic/claude-3-haiku-20240307"
+        default_model = "anthropic/claude-3-5-haiku-20241022"
 
     llm_model = st.selectbox(
         "LLM model",

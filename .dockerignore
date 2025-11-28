@@ -1,0 +1,30 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+
+.venv/
+.uv/
+.env
+.env.*
+
+# Git
+.git
+.gitignore
+
+# IDE / editor
+.vscode/
+.idea/
+
+# Not needed in image
+tests/
+*.ipynb
+dist/
+build/
+
+# Big local data if you have them (adjust names!)
+data/
+datasets/
+downloads/
+tmp/
