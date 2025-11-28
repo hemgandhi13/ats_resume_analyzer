@@ -1,4 +1,4 @@
-# src/ats/llm.py
+# LLM utilities for resume suggestions and scoring
 from __future__ import annotations
 
 import json
@@ -7,14 +7,14 @@ import re
 from dataclasses import asdict, dataclass
 from typing import Iterable, List, Optional, Sequence, Set
 
-# Config-driven NLP backend (no hard-coded lists)
+# Config-driven NLP backend helpers
 from .nlp_backends import _CFG, _canon
 
-# Keep lightweight parsing utilities
+# Lightweight parsing utilities
 from .parse import extract_skills
 from .pdf_utils import normalize
 
-# Load .env early (optional)
+# Load .env if available
 try:
     from dotenv import load_dotenv  # type: ignore
 
@@ -22,7 +22,7 @@ try:
 except Exception:
     pass
 
-# LiteLLM is optional (lets you swap Claude / GPT / Gemini by model name)
+# LiteLLM is optional for swapping providers by model name
 try:
     import litellm  # type: ignore
 except Exception:  # pragma: no cover
@@ -57,6 +57,28 @@ class Suggestions:
         d["missing_keywords"] = sorted(d["missing_keywords"])
         d["tailored_bullets"] = [b.strip() for b in d["tailored_bullets"] if b.strip()]
         return d
+
+
+@dataclass
+class FitDimensions:
+    tools_score: int
+    methods_score: int
+    domain_score: int
+    seniority_score: int
+    communication_score: int
+    overall_score: float
+    notes: str | None = None
+
+    def to_dict(self) -> dict:
+        return {
+            "tools_score": int(self.tools_score),
+            "methods_score": int(self.methods_score),
+            "domain_score": int(self.domain_score),
+            "seniority_score": int(self.seniority_score),
+            "communication_score": int(self.communication_score),
+            "overall_score": float(self.overall_score),
+            "notes": (self.notes or "").strip(),
+        }
 
 
 def _json_only(s: str) -> dict:
@@ -141,7 +163,7 @@ def _combine_vocab(vocab: Optional[Iterable[str]]) -> Set[str]:
     return {normalize(x) for x in (cfg | user) if x}
 
 
-# Minimal extra soft terms you explicitly called out; bulk comes from _CFG.stopwords
+# Extra soft terms to drop in addition to _CFG.stopwords
 _EXTRA_EXCLUDE: Set[str] = {
     "must",
     "required",
@@ -190,7 +212,7 @@ def suggest_resume_improvements(
       - Vocab = _CFG.canonical_skills ∪ (vocab arg).
       - Multi-model fallback via LiteLLM; deterministic fallback if disabled/unavailable.
     """
-    # ---------- derive & clean inputs ----------
+    # Normalize inputs and derive missing/present sets
     vocab_set = _combine_vocab(vocab)
 
     if missing_keywords is None or present_keywords is None:
@@ -204,7 +226,7 @@ def suggest_resume_improvements(
     missing_keywords = _clean_terms(missing_keywords or [])
     present_keywords = _clean_terms(present_keywords or [])
 
-    # Decide whether to call an LLM
+    # Determine whether to call an LLM
     if enable_llm is None:
         enable_llm = os.environ.get("LLM_ENABLE", "0").strip() not in {
             "",
@@ -217,7 +239,7 @@ def suggest_resume_improvements(
     model_name = model or os.environ.get("LLM_MODEL") or "claude-3-haiku-latest"
     target = _resolve_model(model_name)
 
-    # If LLM disabled/unavailable → deterministic fallback
+    # If LLM is disabled or unavailable, use deterministic fallback
     if not enable_llm or litellm is None or not have_key:
         return Suggestions(
             missing_keywords=list(missing_keywords),
@@ -227,7 +249,7 @@ def suggest_resume_improvements(
             notes="fallback",
         )
 
-    # ---------- build strict prompt ----------
+    # Build strict JSON-only prompt
     sys_prompt = (
         "You are an expert resume editor. "
         "Return ONLY compact JSON. No markdown. No comments. Keys: "
@@ -255,7 +277,7 @@ OUTPUT STRICT JSON ONLY:
 {{"missing_keywords": ["..."], "tailored_bullets": ["..."], "notes": "..."}}
 """.strip()
 
-    # ---------- try primary + Anthropic fallbacks ----------
+    # Try primary model, then Anthropic fallbacks
     candidates = [target]
     if target.startswith("anthropic/"):
         candidates += [m for m in _FALLBACK_ANTHROPIC if m != target]
@@ -307,7 +329,7 @@ OUTPUT STRICT JSON ONLY:
             last_err = e
             continue
 
-    # ---------- hard fallback if all models fail ----------
+    # Final fallback if all models fail
     return Suggestions(
         missing_keywords=list(missing_keywords),
         tailored_bullets=_fallback_bullets(
@@ -315,3 +337,149 @@ OUTPUT STRICT JSON ONLY:
         ),
         notes=f"fallback ({type(last_err).__name__ if last_err else 'unknown'})",
     )
+
+
+def score_fit_dimensions(
+    *,
+    jd_text: str,
+    resume_text: str,
+    present_keywords: Sequence[str] | None = None,
+    missing_keywords: Sequence[str] | None = None,
+    model: str | None = None,
+    enable_llm: bool | None = None,
+) -> FitDimensions:
+    """
+    Rate JD–resume fit along multiple dimensions on a 0–10 scale:
+
+      - tools_score
+      - methods_score
+      - domain_score
+      - seniority_score
+      - communication_score
+      - overall_score (0–10 float)
+
+    Falls back to a simple coverage-based heuristic if LLM is disabled/unavailable.
+    """
+    present_clean = _clean_terms(present_keywords or [])
+    missing_clean = _clean_terms(missing_keywords or [])
+
+    total = len(set(present_clean) | set(missing_clean)) or 1
+    coverage = len(set(present_clean)) / float(total)
+
+    # Heuristic fallback when LLM is not used
+    if enable_llm is None:
+        enable_llm = os.environ.get("LLM_ENABLE", "0").strip() not in {
+            "",
+            "0",
+            "false",
+            "False",
+        }
+
+    if not enable_llm or litellm is None or not _have_any_llm_key():
+        base = max(1, min(10, int(round(2 + 8 * coverage))))
+        return FitDimensions(
+            tools_score=base,
+            methods_score=base,
+            domain_score=max(1, base - 1),
+            seniority_score=base,
+            communication_score=base,
+            overall_score=float(base),
+            notes="Heuristic coverage-based scores (LLM disabled/unavailable).",
+        )
+
+    if model is not None:
+        model_name = model
+    else:
+        model_name = os.environ.get("LLM_MODEL", "claude-3-haiku-latest") or "claude-3-haiku-latest"
+
+    target = _resolve_model(model_name)
+
+    sys_prompt = (
+        "You are an ATS and hiring assistant. "
+        "Given a job description and a candidate resume, you will rate the fit "
+        "on five dimensions from 0–10 (integers) and an overall score (0–10 float). "
+        "Be strict but fair; 7–8 is a good match; 9–10 is exceptional. "
+        "Return STRICT JSON only."
+    )
+
+    user_prompt = f"""
+JOB DESCRIPTION (may be truncated):
+{jd_text[:6000]}
+
+RESUME (may be truncated):
+{resume_text[:6000]}
+
+PRESENT KEYWORDS (already matched): {list(present_clean)}
+MISSING KEYWORDS (from JD but not resume): {list(missing_clean)}
+
+DIMENSIONS (all 0–10):
+- tools_score: match on tools/technologies.
+- methods_score: match on methods, techniques, and ways of working.
+- domain_score: relevance of domain/industry experience.
+- seniority_score: does the resume match the expected level (grad/junior/mid/senior).
+- communication_score: clarity of impact, business value, stakeholder skills.
+- overall_score: holistic fit across all of the above (float, 1 decimal).
+
+OUTPUT STRICT JSON ONLY in this shape:
+{{
+  "tools_score": 0,
+  "methods_score": 0,
+  "domain_score": 0,
+  "seniority_score": 0,
+  "communication_score": 0,
+  "overall_score": 0.0,
+  "notes": "short guidance, <= 25 words"
+}}
+""".strip()
+
+    try:
+        resp = litellm.completion(  # type: ignore[call-arg]
+            model=target,
+            messages=[
+                {"role": "system", "content": sys_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.1,
+            max_tokens=int(os.environ.get("LLM_MAX_TOKENS", "400")),
+        )
+        content = resp["choices"][0]["message"]["content"]  # type: ignore[index]
+        data = _json_only(content)
+
+        if not isinstance(data, dict):
+            raise ValueError("LLM did not return a JSON object")
+
+        def _int_field(key: str, default: int) -> int:
+            try:
+                v = int(data.get(key, default))
+            except Exception:
+                return default
+            return max(0, min(10, v))
+
+        def _float_field(key: str, default: float) -> float:
+            try:
+                v = float(data.get(key, default))
+            except Exception:
+                return default
+            return max(0.0, min(10.0, v))
+
+        fd = FitDimensions(
+            tools_score=_int_field("tools_score", 0),
+            methods_score=_int_field("methods_score", 0),
+            domain_score=_int_field("domain_score", 0),
+            seniority_score=_int_field("seniority_score", 0),
+            communication_score=_int_field("communication_score", 0),
+            overall_score=_float_field("overall_score", coverage * 10.0),
+            notes=(str(data.get("notes", "")) or "").strip(),
+        )
+        return fd
+    except Exception:
+        base = max(1, min(10, int(round(2 + 8 * coverage))))
+        return FitDimensions(
+            tools_score=base,
+            methods_score=base,
+            domain_score=max(1, base - 1),
+            seniority_score=base,
+            communication_score=base,
+            overall_score=float(base),
+            notes="Heuristic fallback due to LLM error.",
+        )

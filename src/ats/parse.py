@@ -3,17 +3,17 @@ from __future__ import annotations
 import re
 from typing import Dict, List, Optional, Set
 
-# Use the central JD extractor from nlp_backends (single source of truth)
+# Central JD extractor from nlp_backends to keep vocabulary consistent
 from ats.nlp_backends import _CFG, extract_jd_keywords
 from ats.pdf_utils import normalize, tokenize_words
 
 # ============================================================
-# Regex patterns (practical, robust-enough for resumes)
+# Regex patterns used for resume parsing
 # ============================================================
 
 EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 
-# International-ish phone heuristic (AU friendly, but permissive)
+# International-friendly phone heuristic (AU-biased but permissive)
 PHONE_RE = re.compile(
     r"""
     (?:\+?\d{1,3}[\s\-]?)?         # optional country code (+61)
@@ -29,7 +29,7 @@ MONTH_RE = (
     r"Jul(?:y)?|Aug(?:ust)?|Sep(?:t|tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)"
 )
 
-# Common date ranges: "Jan 2020 - Dec 2023", "2020–Present", "07/2020 - 08/2021"
+# Common date ranges: "Jan 2020 - Dec 2023", "2020-Present", "07/2020 - 08/2021"
 DATE_RANGE_RE = re.compile(
     rf"""
     (?:
@@ -42,11 +42,10 @@ DATE_RANGE_RE = re.compile(
 )
 
 # ============================================================
-# Skills vocabulary (extend anytime)
-# - Kept lowercase for matching; display preserves original term where helpful
+# Skills vocabulary (kept lowercase for matching; display keeps original case)
 # ============================================================
 
-# Use canonical skills from config
+# Prefer canonical skills from config when available
 BASIC_SKILLS: Set[str] = (
     set(_CFG.canonical_skills)
     if _CFG.canonical_skills
@@ -145,23 +144,8 @@ BASIC_SKILLS: Set[str] = (
     }
 )
 
-# Categorised skills (for UI & reports)
-"""
-SKILLS_BY_CATEGORY: Resume-specific skill categorization for UI display.
-
-NOTE: For JD keyword extraction, use `extract_jd_keywords()` from nlp_backends
-      which returns categorized output: {tools, methods, competencies, industry}.
-      
-This dictionary is kept for:
-1. Resume parsing - categorize skills found in resumes for display
-2. Quick vocabulary-based matching in extract_skills()
-3. Backward compatibility with existing code
-
-For NEW code that needs categorized JD keywords, use:
-    from ats.nlp_backends import extract_jd_keywords
-    jd_kw = extract_jd_keywords(jd_text)
-    # Returns: {"tools": [...], "methods": [...], "competencies": [...], "industry": [...]}
-"""
+# Categorised skills used for resume parsing, quick matching, and UI display.
+# For JD keyword extraction, call extract_jd_keywords() in nlp_backends instead.
 SKILLS_BY_CATEGORY: Dict[str, Set[str]] = {
     "programming": {
         "python",
@@ -290,7 +274,7 @@ def extract_links(text: str) -> Dict[str, Optional[str]]:
             url = "https://" + url
         links["github"] = url
 
-    # first non-linkedin/github URL as portfolio
+    # Use first non-LinkedIn/GitHub URL as a portfolio link
     for url in URL_RE.findall(text):
         u = url.strip().strip(").,]")
         low = u.lower()
@@ -353,7 +337,7 @@ GLOBAL_LOCATIONS = {
 
 
 def extract_location(text: str) -> Optional[str]:
-    # look in header area primarily
+    # Focus on the header portion of the resume
     for ln in text.splitlines()[:20]:
         low = ln.lower()
         if any(loc in low for loc in AUS_LOCATIONS | GLOBAL_LOCATIONS):
@@ -374,7 +358,7 @@ def extract_summary(text: str) -> Optional[str]:
     lines = text.splitlines()
     for i, line in enumerate(lines):
         if any(h in line.lower() for h in headers):
-            # capture next non-empty lines until blank or 5 lines
+            # Capture subsequent non-empty lines until blank or five lines
             buf: List[str] = []
             for j in range(i + 1, min(i + 6, len(lines))):
                 s = lines[j].strip()
@@ -495,13 +479,13 @@ def extract_education(text: str) -> List[Dict[str, str]]:
             continue
 
         entry: Dict[str, str] = {"degree": line.strip()}
-        # add field if present on same line
+        # Capture field if present on the same line
         low = line.lower()
         for fw in FIELD_WORDS:
             if fw in low and "field" not in entry:
                 entry["field"] = fw.title()
 
-        # search nearby context for institution + date/year
+        # Scan nearby lines for institution and date/year
         for j in range(max(0, i - 2), min(len(lines), i + 3)):
             near = lines[j].strip()
             if not near:
@@ -520,7 +504,7 @@ def extract_education(text: str) -> List[Dict[str, str]]:
                     if y:
                         entry["year"] = y.group(0)
 
-        # de-dupe similar entries
+        # Avoid duplicate entries
         if entry not in out:
             out.append(entry)
 
@@ -568,7 +552,7 @@ def extract_experience(text: str) -> List[Dict[str, str]]:
         low = ln.lower()
         if any(h in low for h in TITLE_HINTS):
             item: Dict[str, str] = {"title": ln.strip()}
-            # search vicinity for company & dates
+            # Scan nearby lines for company and dates
             for j in range(max(0, i - 2), min(len(lines), i + 4)):
                 s = lines[j].strip()
                 if not s:
@@ -647,7 +631,7 @@ def extract_jd_title(jd_text: str) -> Optional[str]:
             continue
         if normalize(ln) in headers or len(ln) > 120:
             continue
-        # prefer lines with title keywords
+        # Favor lines with title keywords
         if any(
             k in ln.lower()
             for k in (
@@ -661,7 +645,7 @@ def extract_jd_title(jd_text: str) -> Optional[str]:
             )
         ):
             return ln
-        # else take the first plausible
+        # Otherwise take the first plausible option
         if 2 <= len(ln.split()) <= 8:
             return ln
     return None
@@ -692,7 +676,7 @@ def extract_bullets(text: str) -> List[str]:
             out.append(ln.strip())
         elif ln.strip().startswith(("-", "•", "*")):
             out.append(ln.strip(" •*\t"))
-    # de-dup and compact
+    # Deduplicate while preserving order
     uniq = []
     seen = set()
     for b in out:

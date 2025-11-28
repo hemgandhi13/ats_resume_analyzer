@@ -1,4 +1,4 @@
-# src/ats/prompts/prompts.py
+# Prompt builders for ATS Resume Analyzer
 
 from __future__ import annotations
 
@@ -16,11 +16,11 @@ def _section(title: str, body: str) -> str:
 
 def build_make_edits_prompt(
     *,
-    jd_text: str,  # kept for compatibility, but not inlined unless include_raw=True
+    jd_text: str,  # kept for compatibility; inlined only when include_raw=True
     present_keywords: Iterable[str],
     missing_keywords: Iterable[str],
     tailored_bullets: Optional[Iterable[str]] = None,
-    resume_text: Optional[str] = None,  # ignored unless include_raw=True
+    resume_text: Optional[str] = None,  # used only when include_raw=True
     jd_keywords_categorized: Optional[Dict[str, List[str]]] = None,
     industry_hint: Optional[str] = None,
     role_title: Optional[str] = None,
@@ -29,7 +29,7 @@ def build_make_edits_prompt(
     seniority: Optional[str] = None,
     focus: Optional[str] = None,
     extras: Optional[str] = None,
-    include_raw: bool = False,  # <- default: do NOT inline raw resume/JD
+    include_raw: bool = False,  # default avoids inlining raw resume/JD
 ) -> str:
     """
     Build a clean 'Make Edits' prompt without embedding raw resume/JD content.
@@ -152,7 +152,7 @@ def build_make_edits_prompt(
             _section("", deliverables).rstrip(),
             _section("", edit_tasks).rstrip(),
             starter_bullets.rstrip(),
-            raw_block.rstrip(),  # empty unless include_raw=True
+            raw_block.rstrip(),  # populated only when include_raw=True
             "Return the deliverables in plain text, ready to paste into Word.",
         ]
     )

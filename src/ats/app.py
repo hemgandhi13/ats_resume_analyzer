@@ -1,4 +1,4 @@
-# src/ats/app.py
+# Streamlit entrypoint for the ATS Resume Analyzer
 from __future__ import annotations
 
 import csv
@@ -14,38 +14,41 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-# Ensure 'src' is on sys.path when running via `streamlit run src/ats/app.py`
+# System path setup
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
 
 import streamlit as st
 from streamlit.components.v1 import html as st_html
 
-from ats.llm import suggest_resume_improvements
-from ats.nlp_backends import extract_jd_keywords  # ✅ canonical JD keywords
+from ats.evidence import compute_evidence_ranking
+from ats.llm import score_fit_dimensions, suggest_resume_improvements
+from ats.nlp_backends import (
+    extract_jd_keywords_batch,
+    present_missing_vs_resume,
+)
 from ats.parse import parse_job_description, parse_resume
 from ats.pdf_utils import extract_text_auto, extract_text_from_pdf
 from ats.prompts.prompts import build_make_edits_prompt
-from ats.scoring import compute_score_advanced
+from ats.scoring import compute_score, compute_score_advanced
 
-# -----------------------------
-# Logging (file + console)
-# -----------------------------
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.FileHandler("ats_app.log"), logging.StreamHandler()],
-)
+# Logging configuration (file and console)
+root_logger = logging.getLogger()
+if not root_logger.handlers:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[logging.FileHandler("ats_app.log"), logging.StreamHandler()],
+    )
+
 logger = logging.getLogger(__name__)
 
-# -----------------------------
-# Config constants
-# -----------------------------
+# Configuration constants
 MAX_BULLETS_DEFAULT = 5
 PROMPT_TEXTAREA_HEIGHT = 520
 MAX_PDF_PAGES_DEFAULT = 5
 MAX_FILE_SIZE_MB = 10
 
-# Load .env early (for LLM)
+# Load .env early for LLM configuration
 try:
     from dotenv import load_dotenv  # type: ignore
 
@@ -63,9 +66,7 @@ st.set_page_config(page_title="ATS Resume Analyzer", page_icon="🧭", layout="w
 
 st.title("🧭 ATS Resume Analyzer — v0.2")
 
-# -----------------------------
 # Session-state caches
-# -----------------------------
 if "analysis_cache" not in st.session_state:
     st.session_state.analysis_cache = {}
 if "resume_text_cache" not in st.session_state:
@@ -73,9 +74,7 @@ if "resume_text_cache" not in st.session_state:
 if "last_resume_hash" not in st.session_state:
     st.session_state.last_resume_hash = None
 
-# -----------------------------
-# Sidebar
-# -----------------------------
+# Sidebar controls
 with st.sidebar:
     st.markdown("### Settings")
     enable_ocr = st.toggle("Enable OCR for PDFs", value=True)
@@ -92,13 +91,7 @@ with st.sidebar:
         value=os.getenv("LLM_ENABLE", "1").lower() not in {"0", "", "false"},
     )
 
-    # Valid Anthropic model IDs (pick what your workspace supports)
-    AVAILABLE_MODELS = [
-        "anthropic/claude-3-5-sonnet-20241022",
-        "anthropic/claude-3-5-haiku-20241022",
-        "anthropic/claude-3-sonnet-20240229",
-        "anthropic/claude-3-haiku-20240307",
-    ]
+    AVAILABLE_MODELS = ["anthropic/claude-3-5-haiku-20241022"]
     default_model = os.getenv("LLM_MODEL", "anthropic/claude-3-haiku-20240307")
     if default_model not in AVAILABLE_MODELS:
         default_model = "anthropic/claude-3-haiku-20240307"
@@ -126,9 +119,7 @@ with col2:
 analyze = st.button("Analyze", type="primary", use_container_width=True)
 
 
-# -----------------------------
-# Small helpers
-# -----------------------------
+# Helper serialization utilities
 def _json_bytes(obj: Any) -> bytes:
     return json.dumps(obj, ensure_ascii=False, indent=2).encode("utf-8")
 
@@ -144,11 +135,9 @@ def _csv_keywords_bytes(present: list[str], missing: list[str]) -> bytes:
     return output.getvalue().encode("utf-8")
 
 
-# -----------------------------
-# Main action
-# -----------------------------
+# Main analysis workflow
 if analyze:
-    # Size guards
+    # Basic file size validation
     if not resume_file:
         st.error("Please upload a **Resume PDF**.")
         st.stop()
@@ -163,7 +152,7 @@ if analyze:
         st.error(f"❌ JD file too large. Max: {MAX_FILE_SIZE_MB}MB")
         st.stop()
 
-    # JD ingest (prefer uploaded file over textarea)
+    # Prefer uploaded JD files over pasted text
     if jd_file is not None:
         jd_text = extract_text_auto(
             jd_file.read(),
@@ -176,7 +165,7 @@ if analyze:
         st.error("Please provide a Job Description (paste or upload).")
         st.stop()
 
-    # Cache resume extraction by file hash
+    # Cache resume text by file hash
     rbytes = resume_file.getvalue()
     resume_hash = hashlib.md5(rbytes).hexdigest()
     logger.info(f"Analysis started: resume={resume_file.name}, jd_len={len(jd_text)}")
@@ -194,7 +183,7 @@ if analyze:
     resume_parsed = parse_resume(resume_text)
     jd_parsed = parse_job_description(jd_text)
 
-    # Analysis cache key (resume hash + JD + model)
+    # Analysis cache key combines resume hash, JD text, and model selection
     analysis_key = hashlib.md5(
         f"{resume_hash}::{jd_text}::{llm_model}::{llm_enable}::{USE_SEMANTIC_DEFAULT}".encode()
     ).hexdigest()
@@ -202,11 +191,23 @@ if analyze:
     progress = st.progress(0, "Starting analysis…")
 
     if analysis_key not in st.session_state.analysis_cache:
-        # 1) Keywords
+        # Step 1: Extract JD keywords (batch API) and intersect with resume
         progress.progress(20, "Extracting keywords from JD…")
-        jd_cats = extract_jd_keywords(jd_text)
+        jd_batch = extract_jd_keywords_batch([jd_text])
+        jd_cats = (
+            jd_batch[0]
+            if jd_batch
+            else {
+                "tools": [],
+                "methods": [],
+                "competencies": [],
+                "industry": [],
+            }
+        )
 
-        # 2) Scoring
+        present_pm, missing_pm = present_missing_vs_resume(jd_cats, resume_text)
+
+        # Step 2: Compute ATS scoring (advanced + simple)
         progress.progress(50, "Computing ATS score…")
         adv = compute_score_advanced(
             jd_text=jd_text,
@@ -216,8 +217,34 @@ if analyze:
         )
         adv_d = adv.to_dict()
 
-        # 3) LLM suggestions (safe wrapper)
-        progress.progress(80, "Generating tailored suggestions…")
+        simple = compute_score(
+            jd_text=jd_text,
+            resume_text=resume_text,
+        )
+        simple_d = simple.to_dict()
+
+        # Step 3: Semantic evidence ranking: identify bullets closest to the JD
+        progress.progress(65, "Ranking evidence bullets…")
+        evidence = compute_evidence_ranking(
+            jd_text=jd_text,
+            resume_text=resume_text,
+            top_k=5,
+            bottom_k=5,
+        )
+
+        # Step 4: Multi-dimensional fit scores
+        progress.progress(80, "Scoring multi-dimensional fit…")
+        dim_scores = score_fit_dimensions(
+            jd_text=jd_text,
+            resume_text=resume_text,
+            present_keywords=adv_d["present_keywords"],
+            missing_keywords=adv_d["missing_keywords"],
+            model=llm_model,
+            enable_llm=llm_enable,
+        )
+
+        # Step 5: LLM suggestions (with fallback)
+        progress.progress(90, "Generating tailored suggestions…")
         try:
             sugg = suggest_resume_improvements(
                 jd_text=jd_text,
@@ -237,10 +264,16 @@ if analyze:
                 "notes": "LLM unavailable",
             }
 
+        # Cache everything needed for UI render
         st.session_state.analysis_cache[analysis_key] = {
             "adv": adv,
             "adv_d": adv_d,
+            "simple_d": simple_d,
             "jd_cats": jd_cats,
+            "present_pm": present_pm,
+            "missing_pm": missing_pm,
+            "evidence": evidence,
+            "dim_scores": dim_scores,
             "sugg": sugg,
         }
 
@@ -248,29 +281,52 @@ if analyze:
         time.sleep(0.3)
         progress.empty()
 
-    # Use cached results
+    # Reuse cached results
     results = st.session_state.analysis_cache[analysis_key]
     adv = results["adv"]
     adv_d = results["adv_d"]
+    simple_d = results["simple_d"]
     jd_cats = results["jd_cats"]
+    present_pm = results["present_pm"]
+    missing_pm = results["missing_pm"]
+    evidence = results["evidence"]
+    dim_scores = results["dim_scores"]
     sugg = results["sugg"]
 
     logger.info(
-        "Score: %.1f, Present=%d, Missing=%d",
+        "Score: %.1f (advanced), Present=%d, Missing=%d",
         adv.composite,
         len(adv.present_keywords),
         len(adv.missing_keywords),
     )
 
-    # -----------------------------
-    # UI: ATS keywords
-    # -----------------------------
+    # ---- Multi-dimensional fit section ----
+    st.subheader("Multi-dimensional fit (0–10)")
+    ds = dim_scores.to_dict()
+    st.write(
+        f"Tools: {ds['tools_score']}  |  "
+        f"Methods: {ds['methods_score']}  |  "
+        f"Domain: {ds['domain_score']}  |  "
+        f"Seniority: {ds['seniority_score']}  |  "
+        f"Communication: {ds['communication_score']}  |  "
+        f"Overall: {ds['overall_score']:.1f}"
+    )
+
+    # ---- Simple vs Advanced ATS fit ----
+    st.subheader("ATS Fit Score")
+    st.write(
+        f"Simple score: {simple_d['composite']:.1f} / 100 "
+        f"(keyword coverage ≈ {simple_d['keyword_coverage'] * 100:.0f}%, "
+        f"TF-IDF cosine ≈ {simple_d['tfidf_cosine']:.2f})"
+    )
+    st.write(f"Advanced score: {adv_d['composite']:.1f} / 100")
+
     st.subheader("ATS Keywords (present / missing)")
     c1, c2 = st.columns(2)
-    c1.markdown("**Present**")
-    c1.write(", ".join(adv_d["present_keywords"]) or "—")
-    c2.markdown("**Missing**")
-    c2.write(", ".join(adv_d["missing_keywords"]) or "—")
+    c1.markdown("**Present (in resume)**")
+    c1.write(", ".join(present_pm) or "—")
+    c2.markdown("**Missing (from resume)**")
+    c2.write(", ".join(missing_pm) or "—")
 
     with st.expander("JD keyword groups (for tailoring)", expanded=False):
         colA, colB = st.columns(2)
@@ -283,25 +339,46 @@ if analyze:
         colB.markdown("**Industry/Domain**")
         colB.write(", ".join(jd_cats["industry"]) or "—")
 
-    # -----------------------------
-    # LLM suggestions (one time; no duplicate block)
-    # -----------------------------
+    st.subheader("Evidence ranking: how your bullets match this JD")
+
+    col_top, col_bottom = st.columns(2)
+
+    with col_top:
+        st.markdown("**Most relevant bullets (keep / emphasise):**")
+        top_items = evidence.get("top", []) or []
+        if not top_items:
+            st.write("—")
+        else:
+            for item in top_items:
+                score_pct = item.get("score", 0.0) * 100.0
+                text = item.get("text", "")
+                st.write(f"✅ {score_pct:.0f}% &nbsp; {text}")
+
+    with col_bottom:
+        st.markdown("**Least relevant bullets (candidates to rewrite/remove):**")
+        bottom_items = evidence.get("bottom", []) or []
+        if not bottom_items:
+            st.write("—")
+        else:
+            # Display weakest matches first
+            for item in reversed(bottom_items):
+                score_pct = item.get("score", 0.0) * 100.0
+                text = item.get("text", "")
+                st.write(f"⚠️ {score_pct:.0f}% &nbsp; {text}")
+
     st.subheader("Tailored Resume Bullets (Claude)")
     st.markdown("**Missing keywords (final):** " + (", ".join(sugg["missing_keywords"]) or "—"))
     for b in sugg["tailored_bullets"]:
         st.write(f"• {b}")
     st.caption(f"Notes: {sugg.get('notes', '') or '—'}")
 
-    # -----------------------------
-    # Make-Edits Prompt (no raw text inlining)
-    # -----------------------------
     st.subheader("Make-Edits Prompt (copy into your LLM)")
     make_edits_prompt = build_make_edits_prompt(
-        jd_text=jd_text,  # kept for meta/context; raw not inlined
+        jd_text=jd_text,  # Keep JD text for context; avoid inlining raw content
         present_keywords=adv.present_keywords,
         missing_keywords=adv.missing_keywords,
         tailored_bullets=(sugg.get("tailored_bullets") or None),
-        resume_text=None,  # do NOT inline raw resume
+        resume_text=None,  # Do not embed raw resume text
         jd_keywords_categorized=jd_cats,
         industry_hint=None,
         role_title=jd_parsed.get("title"),
@@ -320,7 +397,7 @@ if analyze:
         height=PROMPT_TEXTAREA_HEIGHT,
     )
 
-    # Copy-to-clipboard (reliable)
+    # Copy-to-clipboard button with JS handler
     _btn_id = f"copy_{uuid.uuid4().hex}"
 
     st_html(
@@ -353,9 +430,6 @@ if analyze:
         height=70,
     )
 
-    # -----------------------------
-    # Minimal exports (JSON + CSV)
-    # -----------------------------
     st.divider()
     st.subheader("📥 Export Results")
     d1, d2 = st.columns(2)

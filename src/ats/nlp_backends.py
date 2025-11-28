@@ -1,4 +1,4 @@
-# src/ats/nlp_backends.py
+# NLP backends: config-driven keyword and embedding utilities
 from __future__ import annotations
 
 import hashlib
@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
 
-# ---- Optional dependencies (all fail-safe) ----
+# Optional dependencies (all fail-safe)
 try:
     import litellm  # type: ignore
 except Exception:
@@ -56,9 +56,7 @@ else:
         SentenceTransformer = None  # type: ignore
         np = None  # type: ignore
 
-# =========================
-# Logging / ENV
-# =========================
+# Logging / environment
 _LOG = logging.getLogger(__name__)
 _LOG.setLevel(os.getenv("NLP_LOG_LEVEL", "WARNING").upper())
 
@@ -81,14 +79,12 @@ _CFG_SYNONYMS = _CFG_DIR / "synonyms.json"
 _CFG_PHRASES = _CFG_DIR / "phrases.txt"
 _CFG_CANON_SKILLS = _CFG_DIR / "canonical_skills.txt"
 
-# Redis optional cache
+# Redis-backed cache (optional)
 _REDIS_URL = os.getenv("REDIS_URL", "")
 _CACHE_TTL = int(os.getenv("NLP_CACHE_TTL_SECONDS", "86400"))  # 1 day
 
 
-# =========================
 # Pydantic schema
-# =========================
 class JDKeywordsModel(BaseModel):
     tools_technologies: List[str] = []
     methods_capabilities: List[str] = []
@@ -96,9 +92,7 @@ class JDKeywordsModel(BaseModel):
     industry_domain: List[str] = []
 
 
-# =========================
 # Config loading (no hard-coded lists)
-# =========================
 class _Config:
     def __init__(self):
         self.stopwords: List[str] = self._read_lines(_CFG_STOPWORDS)
@@ -106,7 +100,7 @@ class _Config:
         self.canonical_skills: List[str] = self._read_lines(_CFG_CANON_SKILLS)
         self.synonyms: Dict[str, str] = self._read_json(_CFG_SYNONYMS)
 
-        # normalize
+        # Normalize configuration inputs
         self.stopwords = [normalize(x) for x in self.stopwords if x.strip()]
         self.phrases = [normalize(x) for x in self.phrases if x.strip()]
         self.canonical_skills = [normalize(x) for x in self.canonical_skills if x.strip()]
@@ -148,15 +142,13 @@ class _Config:
 _CFG = _Config()
 
 
-# =========================
-# Lemmatization (spaCy→NLTK→fallback)
-# =========================
+# Lemmatization (spaCy → NLTK → fallback)
 class _Lemmatizer:
     def __init__(self):
         self._spacy_nlp = None
         if spacy is not None:
             try:
-                # Use env override if user loaded a larger model
+                # Use env override if a larger spaCy model is configured
                 model = os.getenv("SPACY_MODEL", "en_core_web_sm")
                 self._spacy_nlp = spacy.load(model, disable=["ner", "parser", "textcat"])
             except Exception as e:
@@ -168,19 +160,19 @@ class _Lemmatizer:
         t = normalize(s)
         if not t:
             return t
-        # try spaCy
+        # Try spaCy
         if self._spacy_nlp is not None:
             try:
                 doc = self._spacy_nlp(t)
                 return " ".join([w.lemma_.lower() for w in doc])
             except Exception:
                 pass
-        # fallback to NLTK wordnet (token-wise)
+        # Fallback to NLTK WordNet (token-wise)
         if self._wnl is not None:
             toks = tokenize_words(t)
             lem = [self._wnl.lemmatize(w) for w in toks]
             return " ".join(lem)
-        # last resort: identity
+        # Last resort: identity
         return t
 
 
@@ -190,13 +182,11 @@ _LEM = _Lemmatizer()
 def _canon(term: str) -> str:
     t = normalize(term)
     t = _LEM.lemma(t)
-    # synonyms from external file
+    # Synonyms from external file
     return _CFG.synonyms.get(t, t)
 
 
-# =========================
 # Embeddings (thread-safe)
-# =========================
 _EMB_LOCK = threading.Lock()
 _EMB_MODEL: Optional[SentenceTransformer] = None
 
@@ -244,9 +234,7 @@ def _snap_to_canonical(cands: Iterable[str], threshold: float = _SNAP_THRESHOLD)
     return _dedupe_keep_order(out)
 
 
-# =========================
-# Caching (Redis → in-proc LRU)
-# =========================
+# Caching (Redis or in-process LRU)
 class _Cache:
     def __init__(self):
         self.r = None
@@ -263,7 +251,7 @@ class _Cache:
             if self.r is not None:
                 s = self.r.get(key)
                 return json.loads(s) if s else None
-            # memory TTL
+            # Enforce in-memory TTL
             item = self.mem.get(key)
             if not item:
                 return None
@@ -296,9 +284,7 @@ def _hash_key(*parts: str) -> str:
     return "jdkw:" + m.hexdigest()
 
 
-# =========================
 # Utilities
-# =========================
 def _dedupe_keep_order(items: Iterable[str]) -> List[str]:
     seen, out = set(), []
     for x in items:
@@ -311,7 +297,7 @@ def _dedupe_keep_order(items: Iterable[str]) -> List[str]:
 
 
 def _clean_terms(xs: Iterable[str], stopwords: Iterable[str], max_words: int = 6) -> List[str]:
-    # allow longer phrases now (up to 6 words, configurable via env)
+    # Allow phrases up to max_words (configurable via env)
     limit = int(os.getenv("MAX_KEYWORD_WORDS", str(max_words)))
     stop = set(normalize(s) for s in stopwords)
     out = []
@@ -340,9 +326,7 @@ def _chunk_text(s: str, size: int = _CHUNK_SIZE, overlap: int = _CHUNK_OVERLAP) 
     return chunks
 
 
-# =========================
 # LLM extraction (JSON-safe)
-# =========================
 _LLM_SYS = (
     "You extract ATS-relevant keywords from job descriptions. "
     "Return STRICT JSON with keys: tools_technologies, methods_capabilities, "
@@ -425,18 +409,16 @@ def _llm_extract(model: str, jd_text: str) -> Optional[JDKeywordsModel]:
     return _merge_models(pieces)
 
 
-# =========================
-# Heuristic fallback (no hard-coded knowledge; just structure)
-# =========================
+# Heuristic fallback (structure-only, no hard-coded knowledge)
 def _heuristic_extract(jd_text: str) -> JDKeywordsModel:
-    # Lightweight fallback: nouns/phrases via simple regex and token heuristics.
+    # Lightweight fallback: nouns/phrases via simple regex and token heuristics
     low = jd_text.lower()
     toks = tokenize_words(low)
 
-    # keep phrases from external config only (no hard-coded phrases)
+    # Keep phrases from external config only (no hard-coded phrases)
     phrases = [p for p in _CFG.phrases if p in low]
 
-    # naive noun-ish capture (capitalized words, tool-ish tokens)
+    # Capture noun-like tokens and tool-like strings
     rough = set()
     for t in toks:
         if len(t) <= 2:
@@ -446,7 +428,7 @@ def _heuristic_extract(jd_text: str) -> JDKeywordsModel:
         if t.isalpha():
             rough.add(t)
 
-    # Put everything in tools by default (will be cleaned/snap+stopword filtered later)
+    # Put everything in tools by default; cleaned later
     tools = list(rough) + phrases
     return JDKeywordsModel(
         tools_technologies=_dedupe_keep_order(tools),
@@ -456,9 +438,7 @@ def _heuristic_extract(jd_text: str) -> JDKeywordsModel:
     )
 
 
-# =========================
 # Public API
-# =========================
 def extract_jd_keywords(jd_text: str) -> Dict[str, List[str]]:
     """
     Robust JD keyword extraction with:
@@ -485,7 +465,7 @@ def extract_jd_keywords(jd_text: str) -> Dict[str, List[str]]:
     if data is None:
         data = _heuristic_extract(jd_text)
 
-    # Clean + canonicalize
+    # Clean and canonicalize
     tools = _clean_terms(
         data.tools_technologies,
         _CFG.stopwords,
@@ -523,7 +503,7 @@ def extract_jd_keywords(jd_text: str) -> Dict[str, List[str]]:
 
 def extract_jd_keywords_batch(jds: List[str]) -> List[Dict[str, List[str]]]:
     """
-    Efficient batch; still cached per-JD. Uses same extractor per call.
+    Efficient batch; still cached per JD using the same extractor.
     """
     out = []
     for jd in jds:
@@ -535,8 +515,7 @@ def present_missing_vs_resume(
     jd_kw: Dict[str, List[str]], resume_text: str
 ) -> Tuple[List[str], List[str]]:
     """
-    Helper: intersects JD keywords with resume content (token/substring).
-    Uses normalized resume text; keeps phrases as substrings.
+    Intersect JD keywords with resume content using normalized text; keeps phrases as substrings.
     """
     norm = normalize(resume_text)
     tokset = set(tokenize_words(norm))

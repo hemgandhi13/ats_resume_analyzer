@@ -4,32 +4,32 @@ import io
 import logging
 from typing import TYPE_CHECKING, Callable, List, Optional, Union
 
-import fitz  # PyMuPDF
+import fitz  # PyMuPDF binding
 
 try:
     import docx  # python-docx
 except Exception:
     docx = None  # type: ignore
 
-if TYPE_CHECKING:  # imports only for type checkers, not at runtime
-    # Pillow's Image type for annotations
+if TYPE_CHECKING:  # Imported only for static analysis, not at runtime
+    # Pillow Image alias for type hints
     from PIL.Image import Image as PILImage  # type: ignore
 
 try:
     from PIL import Image  # type: ignore
-except Exception:  # Pillow not installed
+except Exception:  # Pillow missing in the runtime environment
     Image = None  # type: ignore
 
 try:
     import pytesseract  # type: ignore
-except Exception:  # pytesseract not installed
+except Exception:  # pytesseract missing in the runtime environment
     pytesseract = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 
 
 # ============================================================
-# Small text helpers
+# Text utility helpers
 # ============================================================
 
 
@@ -55,7 +55,7 @@ def _render_page_to_image(page: "fitz.Page", dpi: int = 300) -> "PILImage":
         raise RuntimeError("Pillow is not installed. Add 'pillow' to dependencies.")
     scale = dpi / 72.0
     mat = fitz.Matrix(scale, scale)
-    pix = page.get_pixmap(matrix=mat, alpha=False)  # RGB
+    pix = page.get_pixmap(matrix=mat, alpha=False)  # Render as RGB without alpha
     img_bytes = pix.tobytes("png")
     return Image.open(io.BytesIO(img_bytes))
 
@@ -100,11 +100,11 @@ def extract_text_from_pdf(
     Returns:
         str or List[str]: Extracted text (joined or per-page).
     """
-    # Configure pytesseract path on Windows if provided
+    # Set explicit Tesseract path on Windows when supplied
     if tesseract_cmd and pytesseract is not None:
         pytesseract.pytesseract.tesseract_cmd = tesseract_cmd  # type: ignore
 
-    # Open the document from path or bytes
+    # Open the PDF from a path or raw bytes
     if isinstance(data, (bytes, bytearray)):
         doc = fitz.open(stream=data, filetype="pdf")
     elif isinstance(data, str):
@@ -113,7 +113,7 @@ def extract_text_from_pdf(
         raise TypeError("data must be a file path (str) or PDF bytes/bytearray")
 
     try:
-        # Handle encrypted PDFs
+        # Handle password-protected PDFs
         if doc.needs_pass:
             if not password or not doc.authenticate(password):
                 raise ValueError("PDF is encrypted and no/invalid password was provided.")
@@ -129,7 +129,7 @@ def extract_text_from_pdf(
             page = doc.load_page(i)
             text = page.get_text("text") or ""
 
-            # If the page seems image-only (very short text), attempt OCR
+            # Attempt OCR when extracted text appears too sparse
             if enable_ocr and len(text.strip()) < ocr_page_char_threshold:
                 try:
                     if progress_callback:
@@ -171,7 +171,7 @@ def extract_text_from_docx(data: Union[str, bytes, bytearray]) -> str:
     for p in d.paragraphs:
         if p.text:
             parts.append(p.text)
-    # Also harvest simple table text
+    # Capture basic table contents as pipe-delimited rows
     for table in d.tables:
         for row in table.rows:
             row_txt = [cell.text for cell in row.cells if cell.text]
@@ -210,13 +210,13 @@ def extract_text_auto(
     if filename:
         ext = filename.rsplit(".", 1)[-1].lower()
 
-    # For PDF calls, enforce return_pages=False so we always get a str
+    # Force return_pages=False for PDF extraction so this helper always yields a string
     pdf_kwargs = dict(kwargs)
     pdf_kwargs.pop("return_pages", None)
 
     if ext == "pdf" or (not ext and isinstance(data, (bytes, bytearray))):
         text = extract_text_from_pdf(data, return_pages=False, **pdf_kwargs)
-        # At runtime this is guaranteed by return_pages=False; assert for type checkers
+        # Assertion keeps type checkers happy; runtime is guaranteed by return_pages=False
         assert isinstance(text, str)
         return text
 
@@ -226,7 +226,7 @@ def extract_text_auto(
     if ext in {"txt", "md"}:
         return extract_text_from_txt(data)
 
-    # Fallback: try PDF first, then text decode
+    # Fallback order: try PDF parsing, then plain text decoding
     try:
         text = extract_text_from_pdf(data, return_pages=False, **pdf_kwargs)
         assert isinstance(text, str)

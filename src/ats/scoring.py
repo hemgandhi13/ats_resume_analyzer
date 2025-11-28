@@ -10,8 +10,7 @@ from rapidfuzz import fuzz
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# Pull shared config + JD extractor + embedding from nlp_backends
-# (_CFG exposes stopwords/synonyms loaded from your config files)
+# Shared config, JD extractor, and embedding utilities from nlp_backends
 from ats.nlp_backends import _canon, _embed, extract_jd_keywords
 
 from .parse import (
@@ -22,9 +21,7 @@ from .parse import (
 )
 
 
-# -----------------------------
 # Data classes
-# -----------------------------
 @dataclass
 class MatchDetail:
     skill: str
@@ -43,7 +40,7 @@ class AdvancedScore:
     recency_factor: float  # 0.7..1.0 small boost for recent exp
     composite: float  # 0..100
 
-    # explainability
+    # Explainability fields
     present_keywords: Tuple[str, ...]
     missing_keywords: Tuple[str, ...]
     jd_skill_count: int
@@ -59,14 +56,12 @@ class AdvancedScore:
             d["semantic_cosine"] = round(self.semantic_cosine, 4)
         d["recency_factor"] = round(self.recency_factor, 3)
         d["composite"] = round(float(self.composite), 1)
-        # marshal MatchDetail dataclasses
+        # Marshal MatchDetail dataclasses
         d["details"] = [asdict(x) for x in self.details]
         return d
 
 
-# -----------------------------
 # Helpers
-# -----------------------------
 _MUST_HINTS = {"must", "required", "mandatory", "min", "minimum", "at least"}
 _NICE_HINTS = {"nice to have", "preferred", "bonus", "plus", "good to have"}
 
@@ -80,9 +75,7 @@ def _clip(s: str, n: int = 160) -> str:
     return (s[: n - 1] + "…") if len(s) > n else s
 
 
-# -----------------------------
-# Similarities (TF-IDF / Embedding cosine)
-# -----------------------------
+# Similarities (TF-IDF / embedding cosine)
 def _tfidf_cosine(a: str, b: str) -> float:
     a = (a or "").strip()
     b = (b or "").strip()
@@ -132,9 +125,7 @@ def _semantic_cosine(a: str, b: str) -> Optional[float]:
         return None
 
 
-# -----------------------------
-# Weighting / fuzzy matching / recency
-# -----------------------------
+# Weighting, fuzzy matching, and recency
 def _mandatory_score_hint(line: str) -> float:
     low = line.lower()
     if any(h in low for h in _MUST_HINTS):
@@ -213,9 +204,7 @@ def _recency_factor(experience: Optional[List[Dict[str, str]]]) -> float:
     return 0.84
 
 
-# -----------------------------
 # Public APIs
-# -----------------------------
 def compute_score(
     jd_text: str,
     resume_text: str,
@@ -228,18 +217,15 @@ def compute_score(
     """
     Legacy simple scorer kept for backwards compatibility.
     """
-    # Compute JD and resume hits
+    # Compute JD/resume hits and coverage
     jd_skills_set: Optional[Set[str]] = None
     if jd_skills is not None:
         jd_skills_set = {normalize(s) for s in jd_skills}
     jd_hits = jd_skills_set if jd_skills_set is not None else extract_skills(jd_text, vocab)
     res_hits = extract_skills(resume_text, vocab)
 
-    # Coverage
     cov = (len(jd_hits & res_hits) / max(1, len(jd_hits))) if jd_hits else 0.0
-    # TF-IDF
     sim = _tfidf_cosine(jd_text, resume_text)
-    # Composite
     total_w = (w_cov or 0.0) + (w_sim or 0.0)
     if total_w <= 0:
         w_cov, w_sim = 0.65, 0.35
@@ -293,17 +279,17 @@ def compute_score_advanced(
 ) -> AdvancedScore:
     """
     Advanced scoring with:
-      - single-source JD keyword groups (nlp_backends.extract_jd_keywords)
-      - weighted keyword coverage (must-have > nice-to-have + frequency)
+      - JD keyword groups from nlp_backends.extract_jd_keywords
+      - weighted keyword coverage (must-have vs nice-to-have plus frequency)
       - fuzzy matching (rapidfuzz)
       - optional semantic similarity (embeddings via _embed)
-      - small recency factor from parsed experience
+      - recency factor from parsed experience
     """
     W = {"coverage": 0.60, "tfidf": 0.25, "semantic": 0.15}
     if weights:
         W.update(weights)
 
-    # 1) Allowed vocabulary for THIS JD:
+    # 1) Allowed vocabulary for this JD
     jd_kw = extract_jd_keywords(
         jd_text
     )  # {"tools": [], "methods": [], "competencies": [], "industry": []}
@@ -320,7 +306,7 @@ def compute_score_advanced(
     # 2) Determine JD skills set (canonicalised)
     jd_hits_raw = extract_skills(jd_text, allowed)
 
-    # map synonyms; stable-dedup
+    # Map synonyms; stable dedupe
     def _canonicalize_list(terms: Iterable[str]) -> List[str]:
         out, seen = [], set()
         for t in terms:
@@ -338,7 +324,7 @@ def compute_score_advanced(
     norm_resume = normalize(resume_text)
 
     for sk in sorted(jd_hits):
-        # exact token / substring
+        # Exact token/substring
         exact = False
         if " " in sk:
             if sk in norm_resume:
@@ -360,7 +346,7 @@ def compute_score_advanced(
             )
             continue
 
-        # fuzzy fallback
+        # Fuzzy fallback
         ok, snippet = _fuzzy_present(sk, resume_text, threshold=fuzzy_threshold)
         if ok:
             present.add(sk)
@@ -374,7 +360,7 @@ def compute_score_advanced(
                 )
             )
 
-    # 4) Weighted coverage (must-have vs nice-to-have + frequency)
+    # 4) Weighted coverage (must-have vs nice-to-have plus frequency)
     jd_lines = _lines(jd_text)
     term_weights: Dict[str, float] = {}
     base_weight = 1.0
@@ -383,13 +369,13 @@ def compute_score_advanced(
         occurrences = 0
         for ln in jd_lines:
             low = ln.lower()
-            # quick presence heuristic
+            # Quick presence heuristic
             if (term in normalize(low)) or (
                 fuzz.token_set_ratio(term, normalize(low)) >= fuzzy_threshold
             ):
                 occurrences += 1
                 w *= _mandatory_score_hint(low)
-        # frequency bonus (capped)
+        # Frequency bonus (capped)
         w += min(0.5, max(0, occurrences - 1) * 0.15)
         term_weights[term] = max(0.4, min(3.0, w))  # clamp
 
@@ -404,7 +390,7 @@ def compute_score_advanced(
     tfidf = _tfidf_cosine(jd_text, resume_text)
     sem = _semantic_cosine(jd_text, resume_text) if use_semantic else None
 
-    # Re-normalise contributions if semantic not available
+    # Re-normalise contributions if semantic is not available
     c_cov, c_tfidf, c_sem = W["coverage"], W["tfidf"], W["semantic"]
     if sem is None:
         s = c_cov + c_tfidf
@@ -421,7 +407,7 @@ def compute_score_advanced(
     missing = tuple(sorted(jd_hits - present))
     present_sorted = tuple(sorted(present))
 
-    # attach weights/snippets to details
+    # Attach weights/snippets to details
     final_details: List[MatchDetail] = []
     for d in details:
         w = term_weights.get(d.skill, 1.0)

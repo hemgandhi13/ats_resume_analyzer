@@ -37,7 +37,7 @@ dev = [
   "ruff>=0.6",
   "black>=24.8",
 ]
-# Optional heavier NLP utilities you can sync when needed
+
 nlp = [
   "spacy>=3.7",
   "spacy-transformers>=1.3",
