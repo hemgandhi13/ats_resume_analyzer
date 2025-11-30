@@ -25,11 +25,7 @@ dependencies = [
   "python-docx>=0.8.11",
   # YAML + safe parsing for config
   "pyyaml>=6.0.1",
-    # semantic stack needed for evidence ranking
-  "sentence-transformers>=2.6",
-  "transformers>=4.44",
-  "huggingface_hub>=0.24",
-  "torch>=2.2,<3.0",
+
 ]
 
 [dependency-groups]
@@ -38,6 +34,13 @@ dev = [
   "pre-commit>=4.0",
   "ruff>=0.6",
   "black>=24.8",
+]
+
+semantic = [
+  "sentence-transformers>=2.6",
+  "transformers>=4.44",
+  "huggingface_hub>=0.24",
+  "torch>=2.2,<3.0",
 ]
 
 nlp = [
