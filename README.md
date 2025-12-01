@@ -1,150 +1,165 @@
 <div align="center">
 
-# 🎯 ATS Resume Analyzer
+# ATS Resume Analyzer
 
-### AI-Powered Resume Optimization & Job Description Matching
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
+[![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=flat-square&logo=Streamlit&logoColor=white)](https://streamlit.io)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 
-[![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=Streamlit&logoColor=white)](https://streamlit.io)
-[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
-[![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
-
-**[🚀 Live Demo](https://your-streamlit-url.streamlit.app)** • **[📖 Documentation](#documentation)** • **[🐛 Report Bug](https://github.com/hemgandhi13/ats_resume_analyzer/issues)** • **[✨ Request Feature](https://github.com/hemgandhi13/ats_resume_analyzer/issues)**
+**Live demo (Streamlit, lightweight mode – no semantic embeddings):**  
+**[▶️ Open the ATS Resume Analyzer on Streamlit Cloud](https://atsresumeanalyzer-wqf8cfyyqbg9wpha7rfhze.streamlit.app/)]**
 
 </div>
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
-- [Why This Project Exists](#-why-this-project-exists)
-- [Features](#-features)
-- [How It Works](#-how-it-works)
-- [Architecture](#-architecture-and-module-layout)
-- [Tech Stack](#-tech-stack)
-- [Scoring Logic](#-scoring-logic)
-- [Getting Started](#-getting-started-locally)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-  - [Running Locally](#running-locally)
-  - [Docker Deployment](#-docker-deployment)
-- [LLM Integration](#-llm-integration)
-- [Streamlit Cloud Deployment](#-streamlit-cloud-deployment)
-- [Design Decisions](#-design--infrastructure-trade-offs)
-- [What This Demonstrates](#-what-this-project-demonstrates)
-- [Roadmap](#-roadmap--future-work)
-- [Contributing](#-contributing)
-- [License](#-license)
+[ATS Resume Analyzer](#ats-resume-analyzer-1)
 
----
-## 💡 Why This Project Exists
+1. [Why this project exists](#1-why-this-project-exists)
+2. [What the app does](#2-what-the-app-does)
+3. [How it works – high level](#3-how-it-works--high-level)
+4. [Architecture and module layout](#4-architecture-and-module-layout)  
+   • [Workflow Pipeline](#workflow-pipeline)
 
-Most graduates and early-career candidates face the same challenges:
+5. [Tech stack](#5-tech-stack)
 
-- 🔄 **Keyword mismatch**: Every JD uses slightly different language for the same skills
-- 🚫 **Unforgiving ATS**: Missing a few keywords = instant rejection
-- ⏰ **Manual tailoring is slow**: Hours spent customizing resumes for each application
-- 🎰 **Black-box scoring**: Existing tools give you a number without explaining *why*
+6. [Scoring logic](#6-scoring-logic)  
+   • [6.1 Simple score](#61-simple-score)  
+   • [6.2 Advanced score](#62-advanced-score)
 
-**This project solves that by:**
+7. [LLM integration (conceptual)](#7-llm-integration-conceptual)
 
-1. 🎯 Helping candidates tailor applications systematically and transparently
-2. 🏗️ Demonstrating a **full-stack ML/LLM workflow** from parsing → scoring → UI
-3. ⚖️ Showing infrastructure trade-offs: heavy models, managed hosting, containerization
+8. [Getting started locally (uv)](#8-getting-started-locally-uv)  
+   • [8.1 Prerequisites](#81-prerequisites)  
+   • [8.2 Clone and install base dependencies](#82-clone-and-install-base-dependencies)  
+   • [Run the app](#run-the-app)  
+   • [8.3 (Optional) Install semantic dependency group locally](#83-optional-install-semantic-dependency-group-locally)  
+   • [8.4 Enable LLM features (optional)](#84-enable-llm-features-optional)
 
-> 💼 **Built for:** Job seekers who want data-driven resume optimization  
-> 🎓 **Built by:** A data science graduate showcasing end-to-end ML engineering skills
+9. [Run via Docker (lightweight, no semantic group)](#9-run-via-docker-lightweight-no-semantic-group)
 
----
-## ✨ Features
+10. [Streamlit Cloud deployment (no semantic group)](#10-streamlit-cloud-deployment-no-semantic-group)  
+    • [10.1 Why the semantic group is not installed online](#101-why-the-semantic-group-is-not-installed-online)  
+    • [10.2 How the Streamlit demo is configured](#102-how-the-streamlit-demo-is-configured)
 
-### 📄 Core Functionality
-- **Multi-format parsing**: Upload PDF, DOCX, or TXT resumes
-- **Smart JD analysis**: Paste any job description for instant keyword extraction
-- **Dual scoring system**: Simple (TF-IDF + keywords) and Advanced (weighted, section-aware)
-- **Missing keywords identification**: See exactly what your resume lacks
+11. [Design & infrastructure trade-offs](#11-design--infrastructure-trade-offs)  
+    • [11.1 Semantic embeddings vs hosting constraints](#111-semantic-embeddings-vs-hosting-constraints)  
+    • [11.2 LLM dependence vs robustness](#112-llm-dependence-vs-robustness)  
+    • [11.3 Containerisation vs managed hosting](#113-containerisation-vs-managed-hosting)
 
-### 🤖 AI-Powered Enhancements *(optional)*
-- **Multi-dimensional fit**: Get LLM analysis across Tools, Methods, Domain, Seniority, Communication
-- **Evidence ranking**: Semantic similarity shows your strongest/weakest bullets *(requires semantic group)*
-- **Rewrite suggestions**: AI-generated tailored bullets incorporating missing keywords
-- **Make-edits prompt**: Export a ready-to-use prompt for any LLM
+12. [What this project demonstrates (Recruiters Friendly Section)](#12-what-this-project-demonstrates-recruiters-friendly-section)
 
-### 🎛️ Flexible Configuration
-- **Heuristic mode**: Works without API keys using classical NLP
-- **LLM mode**: Enhanced analysis with Claude/GPT (configurable)
-- **Semantic mode**: Full embedding-based evidence ranking (optional install)
-
-<details>
-<summary>📸 Click to see screenshots</summary>
-
-*Add your Streamlit app screenshots here*
-
-</details>
+13. [Roadmap / future work / Limitations and Assumptions](#13-roadmap--future-work)
 
 ---
-## 🔧 How It Works
 
+# ATS Resume Analyzer
 
+An end-to-end ATS assistant that:
 
+- Parses PDF / DOCX resumes and raw job descriptions
+- Extracts structured skills and JD keyword groups
+- Scores ATS fit using classic NLP + engineered features
+- Optionally uses LLMs for deeper “fit” feedback and rewrite suggestions
 
-
-
-### Workflow Pipeline
-
-| Step | Module | Description |
-|------|--------|-------------|
-| **1. Input** | `app.py` | Resume upload + JD text area |
-| **2. Parsing** | `pdf_utils.py`, `parse.py` | Extract & normalize text; identify sections |
-| **3. Keyword Extraction** | `nlp_backends.py` | Categorize into Tools, Methods, Competencies, Domain |
-| **4. Scoring** | `scoring.py` | Simple (TF-IDF + coverage) & Advanced (weighted) scores |
-| **5. Evidence Ranking** | `evidence.py` | Semantic similarity for top/bottom bullets *(optional)* |
-| **6. LLM Suggestions** | `llm.py`, `prompts.py` | Multi-dimensional fit + rewrite suggestions *(optional)* |
-| **7. Output** | `app.py` | Streamlit dashboard with scores, keywords, suggestions |
-
-<details>
-<summary>🔍 Detailed breakdown of each step</summary>
-
-### 1️⃣ **Inputs**
-- Resume file upload (PDF / DOCX / TXT)
-- Free-text job description pasted into a text area
-
-### 2️⃣ **Parsing**
-- `pdf_utils.py` extracts and normalizes text from uploaded files
-- `parse.py` splits content into sections and experience bullets, identifies raw skills
-
-### 3️⃣ **JD Keyword Extraction**
-- `nlp_backends.py` extracts keywords and categorizes them:
-  - 🛠️ Tools / technologies
-  - 📊 Methods / capabilities
-  - 💬 Soft skills / competencies
-  - 🏢 Domain / industry terms
-- Modes: **Heuristic** (no LLM) or **Auto** (LLM + heuristics with fallback)
-
-### 4️⃣ **Scoring**
-- `scoring.py` computes:
-  - **Simple score**: TF-IDF similarity + keyword coverage
-  - **Advanced score**: Section weighting + must-have keyword penalties
-
-### 5️⃣ **Evidence Ranking** *(optional)*
-- `evidence.py` embeds JD + bullets using `sentence-transformers`
-- Cosine similarity identifies top-K bullets to keep and bottom-K to rewrite
-
-### 6️⃣ **LLM Suggestions** *(optional)*
-- `llm.py` uses LiteLLM to call configured providers (Claude/GPT)
-- `prompts.py` constructs prompts for:
-  - Multi-dimensional fit scoring
-  - Bullet rewrite suggestions
-  - Copy-paste "make-edits" prompt
-
-### 7️⃣ **UI**
-- `app.py` Streamlit interface showing scores, keywords, evidence ranking, and LLM suggestions
-
-</details>
+> Live demo (Streamlit, **lightweight mode – no semantic embeddings**):  
+> **[▶️ Open the ATS Resume Analyzer on Streamlit Cloud](https://atsresumeanalyzer-wqf8cfyyqbg9wpha7rfhze.streamlit.app/)**
 
 ---
-## 🏗️ Architecture and Module Layout
 
+## 1. Why this project exists
+
+Most graduates and early-career candidates run into the same problems:
+
+- Every job description uses slightly different language for **the same skills**.
+- ATS screeners are unforgiving about **keyword coverage**.
+- Manually tailoring a resume for every role is **slow, repetitive and error-prone**.
+- Existing “ATS score” tools often behave like **black boxes**: you see a number, but not the reasoning.
+
+I wanted a project that would:
+
+1. Help me tailor my own applications more systematically.
+2. Demonstrate that I can design and ship a **full data/ML/LLM workflow**, not just a Jupyter notebook.
+3. Show that I understand **infrastructure trade-offs**: heavy models, managed hosting limits, and containerisation.
+
+---
+
+## 2. What the app does
+
+At a user level, the ATS Resume Analyzer lets you:
+
+- Upload a **resume** (PDF / DOCX / TXT).
+- Paste a **job description**.
+- See:
+
+  - A **simple ATS score** and a more nuanced **advanced score** (0–100).
+  - **Present vs missing JD keywords** broken down by type.
+  - (When semantic mode is enabled) an **evidence ranking** of your strongest and weakest bullets.
+  - (When LLM is enabled) a **multi-dimensional fit breakdown** and **rewrite suggestions**.
+
+- Generate a **“make-edits” prompt** you can paste into any LLM to continue iterating on the resume.
+
+The goal is to support a realistic recruiter workflow: “What does this JD care about? Where does my resume already prove it? What should I rewrite next?”
+
+---
+
+## 3. How it works – high level
+
+1. **Inputs**
+
+   - Resume file upload (PDF / DOCX / TXT).
+   - Free-text job description pasted into a text area.
+
+2. **Parsing**
+
+   - `pdf_utils.py` extracts and normalises text from uploaded files.
+   - `parse.py` splits content into sections and experience bullets, and identifies raw skills.
+
+3. **JD keyword extraction**
+
+   - `nlp_backends.py` extracts keywords and categorises them into:
+     - Tools / technologies
+     - Methods / capabilities
+     - Soft skills / competencies
+     - Domain / industry terms
+   - Can run in:
+     - **Heuristic mode** (no LLM; rule-based only).
+     - **Auto mode** (LLM + heuristics, with safe fallback).
+
+4. **Scoring**
+
+   - `scoring.py` computes:
+     - A **simple score** based on TF-IDF similarity + keyword coverage.
+     - An **advanced score** that also considers section weighting and “must-have” keywords.
+
+5. **Evidence ranking (optional semantic layer)**
+
+   - `evidence.py` calls `_embed(...)` from `nlp_backends.py` to embed JD + bullets when the **semantic dependency group** is installed.
+   - Cosine similarity identifies **top-K bullets to keep/emphasise** and **bottom-K to rewrite/remove**.
+
+6. **LLM suggestions (optional)**
+
+   - `llm.py` uses LiteLLM to talk to a configured provider (e.g. Anthropic Claude).
+   - `prompts.py` constructs structured prompts for:
+     - Multi-dimensional fit scoring.
+     - Bullet rewrite suggestions.
+     - A copy-paste “make-edits” block for your own LLM usage.
+
+7. **UI**
+
+   - `app.py` wires everything together in a Streamlit app:
+     - Inputs, scores, present/missing keywords.
+     - JD keyword groups.
+     - Evidence ranking (if available).
+     - LLM-powered explanations and suggestions (if enabled).
+
+---
+
+## 4. Architecture and module layout
+
+This is a small but fully modular Python package with a `src/` layout.
 ats_resume_analyzer/
 ├── src/ats/
 │ ├── app.py # 🎨 Streamlit UI & orchestration
@@ -163,449 +178,527 @@ ats_resume_analyzer/
 ├── uv.lock # 🔒 Locked dependency versions
 └── README.md # 📖 This file
 
+### Workflow Pipeline
 
-### Design Principles
+![ATS Resume Analyzer Architecture](./assets/architecture_diagram.png)
+| Step | Module | Description |
+|------|--------|-------------|
+| **1. Input** | `app.py` | Resume upload + JD text area |
+| **2. Parsing** | `pdf_utils.py`, `parse.py` | Extract & normalize text; identify sections |
+| **3. Keyword Extraction** | `nlp_backends.py` | Categorize into Tools, Methods, Competencies, Domain |
+| **4. Scoring** | `scoring.py` | Simple (TF-IDF + coverage) & Advanced (weighted) scores |
+| **5. Evidence Ranking** | `evidence.py` | Semantic similarity for top/bottom bullets _(optional)_ |
+| **6. LLM Suggestions** | `llm.py`, `prompts.py` | Multi-dimensional fit + rewrite suggestions _(optional)_ |
+| **7. Output** | `app.py` | Streamlit dashboard with scores, keywords, suggestions |
 
-✅ **Modular**: Each module has a single responsibility  
-✅ **Swappable**: Easy to replace Streamlit with FastAPI/CLI  
-✅ **Testable**: Clear boundaries for unit testing  
-✅ **Extensible**: Add new backends, scorers, or LLM providers independently
+**Project structure (core parts)**
+
+- `src/ats/app.py`  
+  Streamlit UI and orchestration.
+
+- `src/ats/pdf_utils.py`  
+  PDF / DOCX reading, text extraction, basic cleaning.
+
+- `src/ats/parse.py`
+
+  - Resume section detection (experience, skills, education, etc.).
+  - Bullet extraction and normalisation.
+  - Job description parsing and raw skill extraction.
+
+- `src/ats/nlp_backends.py`
+
+  - JD keyword extraction (heuristic + optional LLM-assisted).
+  - Embedding utilities (`_embed`) using sentence-transformers (when installed).
+  - Configuration via environment variables (e.g. `NLP_EXTRACTOR`, `EMBEDDING_MODEL`).
+
+- `src/ats/scoring.py`
+
+  - Simple ATS scoring.
+  - Advanced scoring combining multiple signals.
+
+- `src/ats/evidence.py`
+
+  - Takes JD + resume bullets.
+  - Uses embeddings (when available) to rank which bullets most/least strongly support the JD.
+
+- `src/ats/llm.py`
+
+  - LiteLLM wrapper for calling LLMs in a controlled way.
+  - Central place for handling model names, timeouts, and error handling.
+
+- `src/ats/prompts.py`
+
+  - Prompt templates for JD keyword grouping, fit scoring, and bullet rewrites.
+
+- `config/`
+
+  - Stopwords, normalisation maps, canonical skill lists, and other text resources.
+
+- `tests/`
+  - Space reserved for unit tests (parsing, scoring, prompts, etc.).
+
+This separation makes it easy to:
+
+- Swap Streamlit for another frontend (e.g. FastAPI + React).
+- Reuse parsing and scoring functions in a CLI or batch job.
+- Extend or replace the LLM backend independently of the UI.
 
 ---
-## 🛠️ Tech Stack
 
-### Core Technologies
+## 5. Tech stack
 
-| Category | Technologies |
-|----------|-------------|
-| **Language** | Python 3.11+ |
-| **Package Manager** | [uv](https://github.com/astral-sh/uv) (fast, modern) |
-| **Build System** | Hatchling |
-| **UI Framework** | Streamlit |
-| **PDF/DOCX** | PyMuPDF, python-docx, Pillow, pytesseract |
-| **Data & ML** | pandas, numpy, scikit-learn, rapidfuzz |
-| **Config** | pydantic, pydantic-settings, PyYAML, python-dotenv |
-| **LLM Integration** | LiteLLM, instructor |
+**Language & packaging**
 
-### Optional Semantic Group
+- Python 3.11
+- `pyproject.toml` with `hatchling` build backend
+- Dependency management via **`uv`**
 
-> ⚠️ **Heavy dependencies** (800+ MB) — not installed by default in hosted demo
+**Core libraries**
 
-| Package | Purpose |
-|---------|---------|
-| `torch` | PyTorch backend |
+| Category            | Technologies                                                                |
+| ------------------- | --------------------------------------------------------------------------- |
+| **Language**        | Python 3.11+                                                                |
+| **Package Manager** | [uv](https://github.com/astral-sh/uv) (fast, modern)                        |
+| **Build System**    | Hatchling                                                                   |
+| **UI Framework**    | Streamlit                                                                   |
+| **PDF/DOCX**        | PyMuPDF, python-docx, Pillow, pytesseract                                   |
+| **Data & ML**       | pandas, numpy, scikit-learn, rapidfuzz                                      |
+| **Config**          | pydantic, pydantic-settings, PyYAML, python-dotenv                          |
+| **LLM Integration** | LiteLLM (as the routing layer ), instructor(for schema-constrained outputs) |
+
+- **LLM integration:**
+  - `litellm` as the routing layer
+  - `instructor` for schema-constrained outputs
+
+**Optional semantic dependency group**
+
+To keep the **default environment lightweight**, the heavy semantic libraries are placed in a _separate_ dependency group in `pyproject.toml`, for example:
+
+| Package                 | Purpose             |
+| ----------------------- | ------------------- |
+| `torch`                 | PyTorch backend     |
 | `sentence-transformers` | Semantic embeddings |
-| `transformers` | Hugging Face models |
-| `huggingface_hub` | Model downloads |
+| `transformers`          | Hugging Face models |
+| `huggingface_hub`       | Model downloads     |
 
-**Why separate?**
-- Keeps base install lightweight (~100 MB vs 1+ GB)
-- Avoids CUDA wheel timeouts on free hosting
-- Still fully functional without semantic features
+This design is intentional:
 
----
-## 📊 Scoring Logic
+- Locally (and in suitable Docker images), you can install this group and get **full semantic evidence ranking**.
+- On constrained platforms like free Streamlit Cloud, these dependencies are **not installed by default** to avoid huge CUDA/NVIDIA wheel downloads and image size explosions.
+- The README and UI explicitly document this behaviour so it’s clear which features are active in each environment.
 
-### 🎯 Simple Score (0-100)
-
-Fast, deterministic, and explainable.
-
-**Formula:**
-simple_score = (0.5 × TF-IDF_cosine) + (0.5 × keyword_coverage) - missing_penalty
-
-
-**Components:**
-- **TF-IDF cosine similarity**: How close resume vocabulary matches JD vocabulary
-- **Keyword coverage**: % of JD keywords present in resume
-- **Missing penalty**: Soft penalty when critical JD terms are absent
-
-**Example:**
-Simple score: 42.5 / 100
-├─ Keyword coverage: 35% (7/20 keywords found)
-├─ TF-IDF cosine: 0.58
-└─ Missing penalty: -8 (critical terms: "SQL", "Python" absent)
-
+Details of the different environments (local, Docker, Streamlit Cloud) and how the semantic group behaves there are covered in the deployment section that follows.
 
 ---
 
-### 🎯 Advanced Score (0-100)
+## 6. Scoring logic
 
-Adds structure and context awareness.
+The app exposes two complementary scores: **simple** and **advanced**.
 
-**Enhancements over simple:**
-- **Section-aware weighting**: Skills in experience bullets > skills section
-- **Must-have detection**: JD keywords appearing frequently weigh more
-- **Normalized scale**: Consistent 0-100 range for cross-JD comparison
+### 6.1 Simple score
 
-**When to use which:**
-- **Simple**: Quick gut-check, comparing many resumes to one JD
-- **Advanced**: Tailoring a specific resume, understanding nuanced fit
+The simple score is designed to be:
+
+- Fast
+- Deterministic
+- Easy to explain
+
+It combines:
+
+- **TF-IDF cosine similarity** between JD and resume text.
+- **Keyword coverage** (what fraction of JD keywords appear in the resume).
+- A soft **penalty** when critical JD terms are missing.
+
+This gives an immediate sense of “rough ATS alignment” that is comparable across JDs.
+
+### 6.2 Advanced score
+
+The advanced score builds on the simple components and adds more structure:
+
+- **Section-aware weighting**
+
+  - Skills embedded inside experience bullets count more than those only listed in a skills section.
+
+- **Penalty for missing must-have skills**
+
+  - Keywords that appear frequently and prominently in the JD weigh more heavily.
+
+- **Normalisation to a 0–100 scale**
+  - Makes it easier to interpret at a glance and compare across roles.
+
+The advanced score is what the UI highlights as the primary “fit” indicator.
 
 ---
-## 🚀 Getting Started Locally
 
-### Prerequisites
+## 7. LLM integration (conceptual)
 
-- ✅ Python **3.11+** installed
-- ✅ [`uv`](https://github.com/astral-sh/uv) package manager:
+The app treats LLMs as a **copilot**, not a hard dependency.
+
+**Where LLMs are used (when enabled):**
+
+- **JD keyword grouping & enrichment**
+
+  - More nuanced grouping of tools vs methods vs behaviours.
+  - Suggestions for related skills that recruiters might accept as equivalents.
+
+- **Multi-dimensional fit scoring**
+
+  - A structured “review” of the resume against the JD along dimensions like:
+    - Tools / technologies
+    - Methods / analytical capabilities
+    - Domain knowledge
+    - Seniority / ownership
+    - Communication / stakeholder management
+
+- **Rewrite suggestions**
+  - Candidate bullets that integrate missing keywords while preserving realistic tone.
+
+**How it’s controlled:**
+
+- `LLM_ENABLE` – master switch (`0` / `1`).
+- `LLM_MODEL` – e.g. `claude-3-5-haiku-20241022` (configurable).
+- `ANTHROPIC_API_KEY` (or other provider keys) – read from environment.
+- `NLP_EXTRACTOR` – controls whether JD keyword extraction uses LLMs (`auto`) or stays heuristic (`heuristic`).
+
+If keys are missing or disabled, the app:
+
+- Still parses and scores using classical NLP.
+- Surfaces deterministic outputs only.
+- Avoids hard crashes by falling back to heuristic behaviour where possible.
+
+---
+
+## 8. Getting started locally (uv)
+
+Local development is based on [`uv`](https://github.com/astral-sh/uv), which manages a `.venv` from `pyproject.toml`.
+
+### 8.1 Prerequisites
+
+- Python **3.11** installed on your machine
+- `uv` installed globally:
+
+```bash
 pip install uv
+```
 
+### 8.2 Clone and install base dependencies
 
----
-
-### Installation
-1. Clone the repository
+```bash
 git clone https://github.com/hemgandhi13/ats_resume_analyzer.git
 cd ats_resume_analyzer
 
-2. Install base dependencies (no semantic, no dev)
+# Create .venv and install base dependencies (no semantic, no dev groups)
 uv sync
+```
 
-3. (Optional) Install semantic group for evidence ranking
-uv sync --group semantic
+This installs the core stack: Streamlit UI, parsing, scoring, config, and LLM plumbing (without forcing GPU/CUDA-heavy packages).
 
+### Run the app
 
----
-
-### Running Locally
-
-#### 🔹 **Lightweight Mode** (no LLM, no semantic)
-
+```bash
 uv run streamlit run src/ats/app.py
-
+```
 
 Open: http://localhost:8501
 
-**What's available:**
-- ✅ Resume/JD parsing
-- ✅ Simple & advanced scoring
-- ✅ Heuristic keyword extraction
-- ✅ Present/missing keywords
-- ❌ No semantic evidence ranking
-- ❌ No LLM suggestions
+You’ll be running in lightweight mode:
+
+- Parsing + keyword extraction + simple/advanced scoring.
+- Heuristic JD keyword extraction by default.
+- No semantic embeddings unless you explicitly install them.
+- LLM features off unless you enable them via environment variables.
 
 ---
 
-#### 🔹 **Full Mode** (with LLM + semantic)
+### 8.3 (Optional) Install semantic dependency group locally
 
-1. **Create `.env` file:**
+If you want the full evidence ranking experience on your own machine and you’re comfortable installing heavier packages:
 
-.env
-LLM_ENABLE=1
-LLM_MODEL=claude-3-haiku-latest
-ANTHROPIC_API_KEY=sk-ant-your-key-here
-USE_SEMANTIC=1
-NLP_EXTRACTOR=auto
+Install the `semantic` group (as defined in `pyproject.toml`):
 
-2. **Install semantic group:**
+```bash
 uv sync --group semantic
+```
 
+Restart the app:
 
-3. **Run:**
+```bash
 uv run streamlit run src/ats/app.py
+```
 
+Now `_embed(...)` will load a sentence-transformers model, and the **Evidence ranking** panel will show your most and least relevant bullets.
 
-**What's available:**
-- ✅ All lightweight features
-- ✅ Semantic evidence ranking (top/bottom bullets)
-- ✅ Multi-dimensional LLM fit analysis
-- ✅ AI-powered rewrite suggestions
+On managed platforms like free Streamlit Cloud, this group is intentionally not installed to avoid large CUDA/NVIDIA-backed wheels. The deployment section explains how the hosted demo is configured and why.
 
----
-## 🐳 Docker Deployment
+### 8.4 Enable LLM features (optional)
 
-### Build the Image
+By default, the app runs purely on classic NLP / heuristics so it works even without any API keys.
 
+To turn on the LLM-enhanced features locally (multi-dimensional fit panel + rewrite suggestions):
+
+1. Make sure base dependencies are installed:
+
+   ```bash
+   uv sync
+   ```
+
+2. Set the LLM environment variables before running Streamlit.
+
+**PowerShell:**
+
+```bash
+$env:LLM_ENABLE = "1"
+$env:LLM_MODEL = "claude-3-5-haiku-20241022"
+$env:ANTHROPIC_API_KEY = "sk-ant-..."  # your real key
+```
+
+**CMD:**
+
+```bash
+set LLM_ENABLE=1
+set LLM_MODEL=claude-3-5-haiku-20241022
+set ANTHROPIC_API_KEY=sk-ant-...
+```
+
+**macOS / Linux (bash/zsh):**
+
+```bash
+export LLM_ENABLE=1
+export LLM_MODEL=claude-3-5-haiku-20241022
+export ANTHROPIC_API_KEY=sk-ant-...
+```
+
+3. Run the app via `uv`:
+
+```bash
+uv run streamlit run src/ats/app.py
+```
+
+With this enabled you’ll see:
+
+- The multi-dimensional fit panel populated by the LLM.
+- Tailored resume bullet suggestions that integrate missing keywords.
+
+If keys are missing or the LLM call fails, the app is designed to fall back to deterministic behaviour where possible.
+
+### 9. Run via Docker (lightweight, no semantic group)
+
+Some environments don’t make it easy (or necessary) to install the full semantic stack (`torch`, `sentence-transformers`, etc.).  
+For those cases the repo includes a `Dockerfile` that:
+
+- Uses `python:3.11-slim`.
+- Installs `uv` and the base dependency set (no `semantic` group).
+- Creates a `.venv` inside the image.
+- Runs the Streamlit app in the container.
+- Exposes port `8501` and adds a simple HTTP healthcheck.
+
+**Build the image:**
+
+```bash
 docker build -t ats-resume-analyzer .
+```
 
+**Run in lightweight mode (no LLM, no semantic embeddings):**
 
----
+```bash
+docker run --rm -p 8501:8501 \
+  -e LLM_ENABLE=0 \
+  -e USE_SEMANTIC=0 \
+  -e NLP_EXTRACTOR=heuristic \
+  ats-resume-analyzer
+```
 
-### Run (Lightweight Mode)
+Then open:
 
-docker run --rm -p 8501:8501
--e LLM_ENABLE=0
--e USE_SEMANTIC=0
--e NLP_EXTRACTOR=heuristic
-ats-resume-analyzer
+```text
+http://localhost:8501
+```
 
-Open: http://localhost:8501
+This mode deliberately skips:
 
----
+- The semantic dependency group (`torch`, `sentence-transformers`, `transformers`, `huggingface_hub`).
+- External LLM calls.
 
-### Run (with LLM via `.env`)
+…but still showcases:
 
-docker run --rm -p 8501:8501 --env-file .env ats-resume-analyzer
+- Parsing and JD keyword extraction.
+- Simple and advanced ATS scoring.
+- The full Streamlit UX and workflow.
 
-
-**Your `.env` should contain:**
-ANTHROPIC_API_KEY=sk-ant-...
-LLM_ENABLE=1
-LLM_MODEL=claude-3-haiku-latest
-USE_SEMANTIC=0 # still no semantic in lightweight Docker
-NLP_EXTRACTOR=auto
-
-
----
-
-### Health Check
-
-The Dockerfile includes a built-in health check:
-
-docker ps # Check STATUS column shows "healthy"
-
----
-## 🤖 LLM Integration
-
-### Philosophy
-
-LLMs are a **copilot**, not a hard dependency.
-
-- ✅ **With LLM**: Enriched analysis, rewrite suggestions, multi-dimensional scoring
-- ✅ **Without LLM**: Still fully functional with classical NLP
+This is the mode I use for quick demos and portfolio screenshots.
 
 ---
 
-### Configuration
+### 10. Streamlit Cloud deployment (no semantic group)
 
-| Variable | Values | Description |
-|----------|--------|-------------|
-| `LLM_ENABLE` | `0` / `1` | Master switch for LLM features |
-| `LLM_MODEL` | `claude-3-haiku-latest`, `gpt-4o-mini`, etc. | Model to use via LiteLLM |
-| `ANTHROPIC_API_KEY` | `sk-ant-...` | Provider API key |
-| `NLP_EXTRACTOR` | `heuristic` / `auto` | JD keyword extraction mode |
+The public demo linked at the top of this README is deployed on Streamlit Community Cloud using the same base environment as above.
 
----
+#### 10.1 Why the semantic group is not installed online
 
-### Where LLMs Are Used
+The semantic dependency group includes:
 
-#### 1. **JD Keyword Grouping** *(when `NLP_EXTRACTOR=auto`)*
-- More nuanced categorization (Tools vs Methods vs Soft Skills)
-- Suggests related/equivalent skills recruiters might accept
+- `torch`
+- `sentence-transformers`
+- `transformers`
+- `huggingface_hub`
 
-#### 2. **Multi-Dimensional Fit Scoring**
-- Structured review across 5 dimensions:
-  - 🛠️ Tools / Technologies
-  - 📊 Methods / Capabilities
-  - 🏢 Domain Knowledge
-  - 👔 Seniority / Ownership
-  - 💬 Communication / Stakeholder Management
+Installing these on a managed free-tier platform:
 
-#### 3. **Rewrite Suggestions**
-- AI-generated bullets integrating missing keywords
-- Preserves realistic tone and avoids obvious "keyword stuffing"
+- Pulls very large wheels (often including CUDA/NVIDIA-related binaries even for CPU-only usage).
+- Can hit timeouts, memory limits, or long cold-starts.
 
----
+To keep the hosted demo reliable and fast, the Streamlit Cloud deployment:
 
-### Fallback Behavior
+- Installs only the base dependencies from `pyproject.toml` (no `semantic` group).
+- Runs with `USE_SEMANTIC=0` so the evidence-ranking panel politely degrades when embeddings are not available.
 
-If LLM calls fail (missing key, timeout, etc.):
-- ✅ App continues with heuristic-only extraction
-- ✅ Scoring still works (TF-IDF + classical NLP)
-- ✅ No hard crashes
+The README and UI explicitly call this out so it’s clear that:
 
----
-## ☁️ Streamlit Cloud Deployment
+- The local / Docker version can run with full semantic evidence ranking if you install the `semantic` group, while
+- The online demo focuses on parsing + keyword coverage + classical scoring.
 
-### Current Live Demo
+#### 10.2 How the Streamlit demo is configured
 
-🔗 **[Live App](https://your-url.streamlit.app)** *(lightweight mode)*
+At a high level the deployed app is configured with environment variables like:
 
-**Configuration:**
-- `USE_SEMANTIC=0` (no semantic embeddings)
-- `LLM_ENABLE=0` (no API calls)
-- `NLP_EXTRACTOR=heuristic` (rule-based only)
+```text
+NLP_EXTRACTOR=heuristic
+LLM_ENABLE=0
+USE_SEMANTIC=0
+```
 
----
+This keeps the demo independent of:
 
-### Why No Semantic Group on Streamlit Cloud?
+- Heavy GPU-oriented libraries.
+- External API keys.
 
-The semantic dependency group (`torch`, `sentence-transformers`, etc.) includes:
+If you fork the repo and deploy your own Streamlit app, you can choose to:
 
-- 📦 **800+ MB** of wheels (including CUDA/NVIDIA binaries)
-- ⏱️ **10-15 minute** cold starts
-- 💾 **High memory** usage on free tier
+- Keep this lightweight configuration, or
+- Add your own keys (`ANTHROPIC_API_KEY`, etc.) and enable LLM features, understanding that semantic features may still be best kept for local/Docker runs.
 
-**Solution:**
-- Deploy with **base dependencies only**
-- Keep semantic features for **local/Docker** use
-- Clearly document this trade-off in UI
+### 11. Design & infrastructure trade-offs
 
----
+Some trade-offs in this project are deliberate and documented.
 
-### How to Deploy Your Own
+#### 11.1 Semantic embeddings vs hosting constraints
 
-1. **Fork this repo**
+Full evidence ranking requires the `semantic` group (`sentence-transformers` + `torch`):
 
-2. **Go to** [share.streamlit.io](https://share.streamlit.io)
+- This is great for local analysis, but heavy for free cloud environments.
 
-3. **Click "New app"** → Select your fork
+The solution:
 
-4. **Advanced settings → Secrets:**
-Optional: Enable LLM features
-ANTHROPIC_API_KEY = "sk-ant-your-key"
-LLM_ENABLE = "1"
-LLM_MODEL = "claude-3-haiku-latest"
+- Semantic dependencies live in a separate `uv` dependency group.
+- Local and Docker environments can opt in via:
 
-Keep semantic disabled for fast deploys
-USE_SEMANTIC = "0"
-NLP_EXTRACTOR = "heuristic"
+  ```bash
+  uv sync --group semantic
+  ```
 
-5. **Deploy**
+- The Streamlit Cloud demo runs with the base group only, clearly labelled as **“no semantic embeddings”**.
 
----
-## ⚖️ Design & Infrastructure Trade-offs
+#### 11.2 LLM dependence vs robustness
 
-### 1. Semantic Embeddings vs Hosting Constraints
+LLMs are used for enrichment, not as a hard dependency:
 
-**Challenge:** Full evidence ranking requires `torch` + `sentence-transformers` (1+ GB)
+- JD keyword grouping.
+- Multi-dimensional fit interpretation.
+- Rewrite suggestions.
 
-**Solution:**
-- 📦 Separate `[dependency-groups.semantic]` in `pyproject.toml`
-- 💻 Install locally: `uv sync --group semantic`
-- ☁️ Skip on Streamlit Cloud (fast, lightweight demo)
-- 🐳 Choose per Docker build
+When `LLM_ENABLE=0` or keys are missing:
+
+- The app still parses and scores via classic NLP + heuristics.
+- JD extraction can run purely in heuristic mode.
+- The UI remains usable without API keys or network calls.
+
+#### 11.3 Containerisation vs managed hosting
+
+The repo includes:
+
+- A `Dockerfile` and `.dockerignore` suitable for CI/CD pipelines and internal deployment.
+- A `pyproject.toml` + `uv` setup that plays nicely with managed platforms like Streamlit Cloud.
+
+This mirrors a realistic pattern:
+
+- Containers for reproducibility, internal tools, and MLOps stories.
+- Managed hosting for frictionless demos and sharing with non-technical stakeholders.
 
 ---
 
-### 2. LLM Dependence vs Robustness
+### 12. What this project demonstrates (Recruiters Friendly Section)
 
-**Challenge:** Don't want the app to break when API keys are missing
+This project is intentionally more than a single Jupyter notebook. It shows that I can:
 
-**Solution:**
-- 🎛️ LLMs are **optional enhancements**, not requirements
-- ✅ Core parsing/scoring works with classical NLP only
-- 🔀 Graceful fallback when `LLM_ENABLE=0` or keys missing
-- 🧪 Easy to test in "no-network" mode
+- **Design an end-to-end ATS / ML / LLM workflow:**
 
----
+  - Ingestion of PDF/DOCX/TXT resumes and raw JDs.
+  - Parsing, structured extraction, and feature engineering.
+  - Scoring, ranking, and LLM-assisted guidance.
+  - A usable UI that ties the flow together.
 
-### 3. Containerization vs Managed Hosting
+- **Build a modular Python package with clear boundaries:**
 
-**Challenge:** Different deployment targets have different constraints
+  - `pdf_utils` / `parse` / `scoring` / `evidence` / `llm` / `prompts` / `app`.
+  - Easy to plug into other frontends (FastAPI, CLI, etc.).
 
-**Solution:**
-- 🐳 **Dockerfile** for reproducibility, CI/CD, internal tools
-- ☁️ **Streamlit Cloud** for frictionless demos and sharing
-- 📋 **Clear documentation** of what works where
+- **Balance classical ML/NLP with modern LLMs:**
 
-This mirrors real-world patterns: containers for production, managed hosting for prototypes.
+  - Use TF–IDF, keyword coverage, and fuzzy matching as a solid baseline.
+  - Layer LLMs on top for interpretation and rewriting, not as a crutch.
 
----
-## 🎓 What This Project Demonstrates
+- **Handle real-world infrastructure constraints:**
 
-For recruiters and hiring managers, this project shows I can:
+  - Heavy semantic dependencies and their impact on build times and hosting.
+  - API keys / authentication and safe fallbacks.
+  - Different deployment targets: local dev, Docker, Streamlit Cloud.
 
-### 1. **Design End-to-End ML/LLM Workflows**
-- ✅ Ingestion (PDF/DOCX parsing)
-- ✅ Feature engineering (TF-IDF, keyword coverage, embeddings)
-- ✅ Scoring & ranking
-- ✅ LLM integration for interpretability
-- ✅ User-facing UI
+- **Communicate design decisions and trade-offs clearly:**
+  - Why certain features are disabled in the public demo.
+  - How to enable them locally.
+  - What would be required to take this towards production.
 
----
+If you’d like to discuss how I’d evolve this into a multi-tenant, production-grade service (e.g. FastAPI backend + streaming UI + Redis/Postgres + CI pipelines), I’m happy to walk through the design.
 
-### 2. **Build Modular, Production-Ready Code**
-- 📦 Clear separation: `parse` → `score` → `evidence` → `llm` → `app`
-- 🔌 Easy to swap Streamlit for FastAPI/CLI
-- ✅ Testable components (unit tests in progress)
+### 13. Roadmap / future work
 
----
+Planned extensions for the next iterations:
 
-### 3. **Balance Classical ML with Modern LLMs**
-- 🏗️ Solid baseline: TF-IDF, keyword matching, fuzzy search
-- 🤖 LLMs as enhancement: interpretation, rewriting, not a crutch
+- **Supervised shortlist model**  
+  Train a small classifier to predict shortlist likelihood using the engineered features (coverage, scores, evidence ranking, JD complexity).
 
----
+- **API backend**  
+  Factor parsing and scoring into a FastAPI (or similar) backend so Streamlit becomes just one of several clients (web app, Slack bot, CLI).
 
-### 4. **Handle Real-World Infrastructure Constraints**
-- ⚖️ Heavy dependencies (torch, CUDA) and deployment trade-offs
-- 🔐 API keys, authentication, safe fallbacks
-- 🌍 Multiple targets: local dev, Docker, managed cloud
+- **Tests & CI**  
+  Expand unit and integration tests (parsing, scoring, prompts, evidence ranking) and add CI workflows to run linting and tests on each push/PR.
 
----
+- **Lexical fallback for evidence ranking**  
+  Add a non-semantic lexical ranking so the evidence panel stays useful even when embeddings are disabled or unavailable.
 
-### 5. **Communicate Technical Decisions Clearly**
-- 📖 Transparent about what's enabled where (semantic, LLM, etc.)
-- 🛠️ Instructions for enabling features locally
-- 🚀 Roadmap to production-grade system
+- **Visualisations & reports**  
+  Add richer visual components and exportable reports, e.g.:
+  - Skill coverage radar charts.
+  - Time-series of score improvements as you edit a resume.
+  - PDF/HTML “candidate report” for recruiters.
 
----
+### Limitations & assumptions
 
-### Next-Level Discussion
-
-I'm happy to discuss:
-- 🏢 Multi-tenant, production architecture (FastAPI + Postgres + Redis + CI)
-- 📊 Training a supervised shortlist classifier on engineered features
-- 🔄 Streaming UI with WebSocket updates
-- 🧪 Comprehensive test suite + CI/CD pipeline
-
----
-## 🗺️ Roadmap / Future Work
-
-### Planned Extensions
-
-- [ ] **Supervised Shortlist Model**  
-  Train a classifier to predict "shortlist likelihood" using engineered features
-
-- [ ] **API Backend**  
-  Factor parsing/scoring into FastAPI so Streamlit becomes one of many clients (web app, Slack bot, CLI)
-
-- [ ] **Comprehensive Tests & CI**  
-  Expand unit/integration tests, add GitHub Actions for linting + tests on each PR
-
-- [ ] **Lexical Fallback for Evidence Ranking**  
-  Non-semantic lexical ranking when embeddings unavailable
-
-- [ ] **Enhanced Visualizations**  
-  - Skill coverage radar charts
-  - Time-series of score improvements
-  - Exportable PDF/HTML candidate reports
+- Best for English-language JDs and resumes.
+- Parsing works best on text-based PDFs/DOCX; scanned images rely on OCR and may be noisy.
+- Scores are heuristic / proxy ATS metrics, not an exact replica of any specific vendor.
+- LLM suggestions are non-deterministic and depend on the configured model + API key.
+- Online demo runs in “lightweight mode” (no semantic embeddings, LLM disabled by default).
 
 ---
 
-*These are intentionally future work to keep the README honest about what's implemented today, while signaling a clear path forward.*
+### License
 
----
-## 🤝 Contributing
-
-Contributions are welcome! Here's how:
-
-1. **Fork** the repository
-2. **Create** a feature branch: `git checkout -b feature/amazing-feature`
-3. **Commit** your changes: `git commit -m 'Add amazing feature'`
-4. **Push** to the branch: `git push origin feature/amazing-feature`
-5. **Open** a Pull Request
-
-### Areas for Contribution
-- 🧪 Unit tests for parsing, scoring, prompts
-- 🌍 Multi-language support
-- 📊 New scoring metrics
-- 🎨 UI improvements
+This project is licensed under the MIT License – see `LICENSE` for details.
 
 ---
 
-## 📄 License
+### Author
 
-Distributed under the MIT License. See `LICENSE` for more information.
-
----
-
-## 📬 Contact
-
-**Hem Gandhi**  
-📧 Email: [your-email@example.com](mailto:your-email@example.com)  
-💼 LinkedIn: [linkedin.com/in/yourprofile](https://linkedin.com/in/yourprofile)  
-🐙 GitHub: [@hemgandhi13](https://github.com/hemgandhi13)
-
-**Project Link:** [https://github.com/hemgandhi13/ats_resume_analyzer](https://github.com/hemgandhi13/ats_resume_analyzer)
-
----
-
-<div align="center">
-
-### ⭐ If you found this project helpful, please star it!
-
-**[⬆ Back to Top](#-ats-resume-analyzer)**
-
-</div>
+Built by **Hem Gandhi** – feel free to reach out on LinkedIn:  
+[linkedin.com/in/hem-gandhi-92757b195](https://www.linkedin.com/in/hem-gandhi-92757b195/)
