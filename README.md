@@ -158,7 +158,7 @@ The goal is to support a realistic recruiter workflow: “What does this JD care
 ---
 
 ## 4. Architecture and module layout
-
+```
 This is a small but fully modular Python package with a `src/` layout.
 ats_resume_analyzer/
 ├── src/ats/
@@ -177,7 +177,7 @@ ats_resume_analyzer/
 ├── pyproject.toml # 📦 Dependencies (uv)
 ├── uv.lock # 🔒 Locked dependency versions
 └── README.md # 📖 This file
-
+```
 ### Workflow Pipeline
 
 ![ATS Resume Analyzer Architecture](./assets/architecture_diagram.png)
